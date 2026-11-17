@@ -6,7 +6,7 @@ There are two ways to run Scrawl, and you can use either or both.
 | --- | --- | --- |
 | Needs a server | no, a static host is enough (Vercel, Netlify, GitHub Pages) | yes, one small binary |
 | Board addresses | `yoursite.com/CODE` | `yourserver.com/CODE` |
-| Saved boards | live while someone has them open; the host's browser remembers them | JSON files on disk, always on |
+| When boards go away | when the last person leaves | a minute after the last person leaves (set `SCRAWL_KEEP=1` to keep them on disk) |
 | Images | about 3 MB, GIFs about 2.2 MB (they travel inside the board) | 10 MB uploads |
 | Strict firewalls | can fail (no relay is built in) | works |
 | Cost | free | a small VM or a free tier |
@@ -37,7 +37,7 @@ How it connects: the first browser to open a code registers `scrawl-v1-<code>` w
 2. Open `https://render.com/deploy?repo=https://github.com/TopLuau/scrawl` (the button in the README), or New, Blueprint, pick the repo. `render.yaml` sets it up.
 3. When it is live, `https://something.onrender.com/healthz` answers `ok`.
 
-Free Render instances sleep when idle (the first visit takes about 30 seconds) and **lose saved boards on restart**. For boards that last, use a paid plan with a disk (see the commented block in `render.yaml`).
+Free Render instances sleep when idle (the first visit takes about 30 seconds). Boards are temporary by default, so the free plan's missing disk does not matter. If you set `SCRAWL_KEEP=1` and want boards to survive restarts, use a paid plan with a disk (see the commented block in `render.yaml`).
 
 ### Fly.io
 
@@ -74,6 +74,6 @@ window.SCRAWL = { mode: "server", app: "https://something.onrender.com", repo: "
 
 The landing page then sends people to `https://something.onrender.com/CODE`. With `mode: "p2p"` and `app: ""` boards stay on the static site.
 
-## Backups (server mode)
+## Keeping boards (server mode)
 
-Everything lives in the data folder: `boards/<code>.json` and `files/`. Copy it to back up.
+By default an empty board is deleted a minute after the last person leaves, together with the pictures uploaded to it, and leftovers from a previous run are cleared at startup. Set `SCRAWL_KEEP=1` to store boards as `boards/<code>.json` and keep them (and `files/`) until you delete them. `SCRAWL_GRACE_SECS` changes the one-minute wait.

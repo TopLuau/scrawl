@@ -46,8 +46,7 @@ function cleanObj(o) {
 function start({ room, me, onMessage, onStatus, getObjs }) {
   const hostId = PREFIX + room.toLowerCase();
   const peerCfg = (window.SCRAWL && window.SCRAWL.peer) || {};
-  const storeKey = 'scrawl.board.' + room.toLowerCase();
-  let peer = null, role = null, hostConn = null, H = null, tries = 0, saveTimer = null, gone = false;
+  let peer = null, role = null, hostConn = null, H = null, tries = 0, gone = false;
 
   const status = (ok, text) => onStatus(ok, text, role);
   const kill = () => { try { peer && peer.destroy(); } catch {} peer = null; hostConn = null; };
@@ -72,20 +71,15 @@ function start({ room, me, onMessage, onStatus, getObjs }) {
     status(false, 'can’t reach the matchmaking server, retrying…');
     setTimeout(() => attempt(seed), Math.min(8000, 800 * tries));
   }
-  function loadSaved() { try { return JSON.parse(localStorage.getItem(storeKey) || '[]'); } catch { return []; } }
-  function scheduleSave() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { try { localStorage.setItem(storeKey, JSON.stringify(H.objs)); } catch {} }, 1500);
-  }
-
   function becomeHost(seed) {
     role = 'host'; tries = 0;
-    const objs = (seed && seed.length ? seed : loadSaved()).map(cleanObj).filter(Boolean);
+    // A new board starts empty; a person taking over from a host who left seeds it from their own copy.
+    const objs = (seed || []).map(cleanObj).filter(Boolean);
     H = { objs, users: new Map(), conns: new Map(), nextId: 2, buckets: new Map() };
     me.id = 1;
     H.users.set(1, { id: 1, name: me.name, color: me.color });
     onMessage({ t: 'init', you: 1, objs: H.objs, users: [...H.users.values()] });
-    status(true, 'You are hosting this board. It stays online while at least one of you has it open.');
+    status(true, 'You are hosting this board. It disappears when the last person leaves.');
     peer.on('connection', conn => {
       conn.on('data', d => fromClient(conn, d));
       conn.on('close', () => drop(conn));
@@ -151,7 +145,7 @@ function start({ room, me, onMessage, onStatus, getObjs }) {
       case 'clear': H.objs = []; out({ t: 'clear', from: uid }, uid); break;
     }
   }
-  function out(msg, uid) { bcast(msg, uid); if (uid !== 1) onMessage(msg); scheduleSave(); }
+  function out(msg, uid) { bcast(msg, uid); if (uid !== 1) onMessage(msg); }
 
   // ---------------------------------------------------------------- joining someone else's board
   function joinAsClient(seed) {

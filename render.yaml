@@ -3,12 +3,12 @@ services:
   - type: web
     name: scrawl
     runtime: docker
-    plan: free            # free instances sleep when idle and lose saved boards on restart
+    plan: free            # free instances sleep when idle; boards are temporary by default
     healthCheckPath: /healthz
     envVars:
       - key: SCRAWL_TRUST_PROXY
         value: "1"
-    # For boards that survive restarts, use a paid plan and uncomment:
+    # Only if you set SCRAWL_KEEP=1 and want boards to survive restarts: paid plan + this disk:
     # disk:
     #   name: scrawl-data
     #   mountPath: /data

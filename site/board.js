@@ -593,7 +593,7 @@ async function exportPng() {
 function setStatus(ok, text, role) {
   online = ok; retry = 0;
   const d = $('#dot'); d.className = ok ? 'ok' : (role === null ? 'bad' : ''); d.title = text || (ok ? 'connected' : 'connecting');
-  if (ok && role === 'host') toast('You are hosting this board. Share the link; it stays online while someone has it open.');
+  if (ok && role === 'host') toast('You are hosting this board. Share the link. The board disappears when the last person leaves.');
 }
 function connect() {
   if (MODE === 'p2p') {

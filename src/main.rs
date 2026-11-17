@@ -46,6 +46,8 @@ struct Room {
     users: Mutex<HashMap<u64, User>>,
     tx: broadcast::Sender<String>,
     dirty: AtomicBool,
+    /// When the last person left (boards are deleted a minute after that unless SCRAWL_KEEP is set).
+    empty_since: Mutex<Option<Instant>>,
 }
 
 struct App {
@@ -54,6 +56,8 @@ struct App {
     next_id: AtomicU64,
     uploads: Mutex<HashMap<IpAddr, (Instant, u32)>>,
     trust_proxy: bool,
+    /// Keep boards on disk after everyone leaves. By default a board is deleted when it is empty.
+    keep: bool,
 }
 
 type St = Arc<App>;
@@ -91,17 +95,21 @@ impl App {
         if rooms.len() >= MAX_ROOMS {
             return None;
         }
-        let objs: Vec<Value> =
+        let objs: Vec<Value> = if self.keep {
             std::fs::read_to_string(self.data.join("boards").join(format!("{name}.json")))
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
-                .unwrap_or_default();
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
         let (tx, _) = broadcast::channel(512);
         let r = Arc::new(Room {
             objs: Mutex::new(objs),
             users: Mutex::new(HashMap::new()),
             tx,
             dirty: AtomicBool::new(false),
+            empty_since: Mutex::new(None),
         });
         rooms.insert(name.to_string(), r.clone());
         Some(r)
@@ -426,7 +434,15 @@ async fn upload(
     Json(json!({"url": format!("/files/{file}")})).into_response()
 }
 
+/// Boards linger for a grace period (SCRAWL_GRACE_SECS, default 60) after the last person leaves,
+/// so a page refresh or a dropped connection does not lose them.
 async fn saver(st: St) {
+    let grace = Duration::from_secs(
+        std::env::var("SCRAWL_GRACE_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(60),
+    );
     loop {
         tokio::time::sleep(Duration::from_secs(2)).await;
         let rooms: Vec<(String, Arc<Room>)> = st
@@ -437,20 +453,63 @@ async fn saver(st: St) {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         for (name, r) in rooms {
-            if r.dirty.swap(false, Ordering::Relaxed) {
-                let s = serde_json::to_string(&*r.objs.lock().unwrap()).unwrap_or_default();
-                let dir = st.data.join("boards");
-                let _ = tokio::fs::create_dir_all(&dir).await;
-                let tmp = dir.join(format!("{name}.json.tmp"));
-                if tokio::fs::write(&tmp, s).await.is_ok() {
-                    let _ = tokio::fs::rename(&tmp, dir.join(format!("{name}.json"))).await;
+            let empty = r.users.lock().unwrap().is_empty();
+            if st.keep {
+                if r.dirty.swap(false, Ordering::Relaxed) {
+                    let s = serde_json::to_string(&*r.objs.lock().unwrap()).unwrap_or_default();
+                    let dir = st.data.join("boards");
+                    let _ = tokio::fs::create_dir_all(&dir).await;
+                    let tmp = dir.join(format!("{name}.json.tmp"));
+                    if tokio::fs::write(&tmp, s).await.is_ok() {
+                        let _ = tokio::fs::rename(&tmp, dir.join(format!("{name}.json"))).await;
+                    }
                 }
+                if empty && !r.dirty.load(Ordering::Relaxed) {
+                    st.rooms.lock().unwrap().remove(&name);
+                }
+                continue;
             }
-            if r.users.lock().unwrap().is_empty() && !r.dirty.load(Ordering::Relaxed) {
-                st.rooms.lock().unwrap().remove(&name);
+            // Default: a board lives only while someone is on it.
+            let expired = {
+                let mut since = r.empty_since.lock().unwrap();
+                if !empty {
+                    *since = None;
+                    false
+                } else {
+                    since.get_or_insert_with(Instant::now).elapsed() > grace
+                }
+            };
+            if expired {
+                destroy_room(&st, &name, &r).await;
             }
         }
     }
+}
+
+/// Forget an empty board and delete the pictures that were uploaded to it.
+async fn destroy_room(st: &St, name: &str, r: &Arc<Room>) {
+    {
+        let mut rooms = st.rooms.lock().unwrap();
+        // Someone may have joined since we looked; check again while holding the lock.
+        if !r.users.lock().unwrap().is_empty() {
+            return;
+        }
+        rooms.remove(name);
+    }
+    let files: Vec<String> = r
+        .objs
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|o| o["src"].as_str())
+        .filter_map(|s| s.strip_prefix("/files/"))
+        .filter(|f| f.chars().all(|c| c.is_ascii_alphanumeric() || c == '.'))
+        .map(String::from)
+        .collect();
+    for f in files {
+        let _ = tokio::fs::remove_file(st.data.join("files").join(f)).await;
+    }
+    let _ = tokio::fs::remove_file(st.data.join("boards").join(format!("{name}.json"))).await;
 }
 
 async fn room_page(Path(room): Path<String>) -> Response {
@@ -508,6 +567,12 @@ async fn main() {
         .unwrap_or_else(|_| "0.0.0.0:7878".into())
         .parse()
         .expect("SCRAWL_ADDR must look like 0.0.0.0:7878");
+    let keep = std::env::var("SCRAWL_KEEP").is_ok();
+    if !keep {
+        // Boards are temporary by default: clear anything left over from a previous run.
+        let _ = std::fs::remove_dir_all(data.join("boards"));
+        let _ = std::fs::remove_dir_all(data.join("files"));
+    }
     let _ = std::fs::create_dir_all(data.join("files"));
     let st: St = Arc::new(App {
         rooms: Mutex::new(HashMap::new()),
@@ -515,6 +580,7 @@ async fn main() {
         next_id: AtomicU64::new(1),
         uploads: Mutex::new(HashMap::new()),
         trust_proxy: std::env::var("SCRAWL_TRUST_PROXY").is_ok(),
+        keep,
     });
     tokio::spawn(saver(st.clone()));
 

@@ -79,7 +79,7 @@
       <div><svg class="i"><use href="#i-image"/></svg><h3>Images and GIFs</h3><p>Drop, paste, upload or add by link. GIFs keep playing right on the board.</p></div>
       <div><svg class="i"><use href="#i-users"/></svg><h3>Live together</h3><p>See each other's cursors and edits as they happen, with names and colours.</p></div>
       <div><svg class="i"><use href="#i-undo"/></svg><h3>Undo and redo</h3><p>Take back your own changes without touching anyone else's work.</p></div>
-      <div><svg class="i"><use href="#i-save"/></svg><h3>Stays put</h3><p>A board lives while anyone has it open, and the host's browser remembers it. Self-host for boards that never go away.</p></div>
+      <div><svg class="i"><use href="#i-save"/></svg><h3>Gone when you are</h3><p>A board exists only while someone is on it. When the last person leaves it is deleted, with its pictures. Nothing lingers.</p></div>
       <div><svg class="i"><use href="#i-download"/></svg><h3>Export to PNG</h3><p>Save the whole board as a picture with one click.</p></div>
       <div><svg class="i"><use href="#i-lock"/></svg><h3>No accounts</h3><p>Pick a name and go. Boards are private to whoever has the link.</p></div>
     </div>
@@ -116,11 +116,11 @@
   <div class="wrap">
     <span class="eyebrow">Under the hood</span>
     <h2>No server needed, or one small Rust program</h2>
-    <p class="sec-lead">On the web, browsers talk straight to each other, so there is nothing to sign up for or host. If you want boards that are always on, run the Rust server: one file, no database.</p>
+    <p class="sec-lead">On the web, browsers talk straight to each other, so there is nothing to sign up for or host. If you want to run your own, the Rust server is one file with no database.</p>
     <div class="stats">
       <div><b>Peer to peer</b><span>drawings travel browser to browser</span></div>
       <div><b>1 file</b><span>the self-hosted Rust server, web app included</span></div>
-      <div><b>JSON</b><span>self-hosted boards are plain files on disk</span></div>
+      <div><b>Temporary</b><span>empty boards are deleted automatically</span></div>
       <div><b>MIT</b><span>licensed, free to host and change</span></div>
     </div>
   </div>
@@ -130,7 +130,7 @@
   <div class="wrap">
     <span class="eyebrow">Self-host</span>
     <h2>Run it yourself in a minute</h2>
-    <p class="sec-lead">The Rust server adds boards that are always on, bigger uploads (10 MB) and everything saved in one folder. Run it on a small server, a spare Raspberry Pi, or your own machine.</p>
+    <p class="sec-lead">The Rust server adds bigger uploads (10 MB), works through strict firewalls and can keep boards if you ask it to. Run it on a small server, a spare Raspberry Pi, or your own machine.</p>
     <div class="two">
       <div><h3>From source</h3><pre># inside the Scrawl source folder
 cargo run --release
@@ -149,11 +149,11 @@ docker run -p 7878:7878 \
     <h2>Good to know</h2>
     <div style="margin-top:28px">
       <details><summary>Who can see or edit my board?</summary><p>Anyone who has the link. The board code in the address is the only access control, so treat the link like an unlisted document. There are no passwords or accounts yet.</p></details>
-      <details><summary>How do boards work without a server?</summary><p>The first person to open a code becomes the host and their browser keeps the board. Everyone else connects to them directly (WebRTC). If the host leaves, someone still on the board takes over with their copy, so nothing is lost while at least one person stays. When everyone has left, the host's browser remembers the board and brings it back the next time they open that code. A free public matchmaking server only introduces browsers to each other; drawings never pass through it.</p></details>
+      <details><summary>How do boards work without a server?</summary><p>The first person to open a code becomes the host and their browser keeps the board. Everyone else connects to them directly (WebRTC). If the host leaves, someone still on the board takes over with their copy, so nothing is lost while at least one person stays. When the last person leaves, the board is gone. A free public matchmaking server only introduces browsers to each other; drawings never pass through it.</p></details>
       <details><summary>Why can't someone join my board?</summary><p>A few strict networks (some company or school Wi-Fi) block direct browser connections, and no relay is built in. Try another network, or self-host the Rust server, which works through any firewall.</p></details>
       <details><summary>How do I add a GIF?</summary><p>Drag the file onto the board, paste it, use the image button, or use the globe button to paste a direct link ending in .gif. Files on shared web boards can be up to about 2 MB (the self-hosted server allows 10 MB). Search sites like Tenor and Giphy need their own API keys, so they are not built in.</p></details>
       <details><summary>Does it work on phones and tablets?</summary><p>The interface adapts to small screens and uses touch pointers with pinch zoom. It has been written for touch but not yet tested on real devices, so expect rough edges.</p></details>
-      <details><summary>Where is my data stored?</summary><p>On web boards, in the browsers of the people who have the board open (the host's browser keeps a copy). Nothing is stored on a server. With the self-hosted server, boards are JSON files and uploads are files in its data folder.</p></details>
+      <details><summary>What happens to my board when everyone leaves?</summary><p>It is deleted. On web boards it only ever existed in the browsers of the people on it. On a self-hosted server an empty board is removed after a minute, together with the pictures uploaded to it (set <code>SCRAWL_KEEP=1</code> to keep boards on disk instead). Use Export to save a picture of a board first.</p></details>
     </div>
   </div>
 </section>

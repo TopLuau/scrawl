@@ -45,7 +45,9 @@ Or grab a build from the **[Releases page](../../releases/latest)** (Windows, ma
 |---|---|---|
 | `PORT` | `7878` | port to listen on (set by hosts like Render, Fly and Railway) |
 | `SCRAWL_ADDR` | `0.0.0.0:7878` | full listen address, overrides `PORT` |
-| `SCRAWL_DATA` | `data` | folder for boards (`boards/`) and uploads (`files/`) |
+| `SCRAWL_DATA` | `data` | folder for uploads (`files/`) and, with `SCRAWL_KEEP`, boards (`boards/`) |
+| `SCRAWL_KEEP` | unset | keep boards on disk after everyone leaves (default: delete empty boards and their pictures) |
+| `SCRAWL_GRACE_SECS` | `60` | how long an empty board waits before it is deleted |
 | `SCRAWL_TRUST_PROXY` | unset | set behind a reverse proxy so rate limits use `X-Forwarded-For` |
 
 ```bash
@@ -58,7 +60,7 @@ docker build -t scrawl . && docker run -p 7878:7878 -v scrawl-data:/data scrawl
 - **Images and GIFs**: upload, drag and drop, paste from the clipboard, or add by link. GIFs keep animating on the board.
 - **Live together**: edits, cursors and who is online show up instantly over WebSockets.
 - **Edit anything**: select, move, resize, recolour, delete. Undo and redo your own actions.
-- **Saved**: boards persist as JSON files and survive restarts.
+- **Temporary**: a board exists only while someone is on it. When the last person leaves it is deleted (a self-hosted server waits a minute, so a refresh is safe, and also removes the pictures uploaded to it). Use Export to keep a picture.
 - **Export** a board as PNG. **Share** copies the board link.
 - **Keyboard**: `V` select, `P` pen, `H` highlighter, `E` eraser, `L` line, `A` arrow, `R` rectangle, `O` ellipse, `T` text, `N` note, `Space` pan, `Ctrl+Z` undo.
 - **Small**: about 3 MB binary with the whole web app embedded.
@@ -69,9 +71,9 @@ docker build -t scrawl . && docker run -p 7878:7878 -v scrawl-data:/data scrawl
 
 ## Two ways to run it
 
-**On the web (no server):** [scrawlboard.vercel.app](https://scrawlboard.vercel.app) is a static site. Open `scrawlboard.vercel.app/ANYCODE` and you are on that board; send the link and others join. Browsers connect to each other directly over WebRTC: the first person to open a code hosts it, and if they leave, someone still on the board takes over with their copy. A free public [PeerJS](https://peerjs.com) server only introduces browsers to each other. Pictures are limited to about 3 MB (GIFs about 2.2 MB) because they travel inside the board.
+**On the web (no server):** [scrawlboard.vercel.app](https://scrawlboard.vercel.app) is a static site. Open `scrawlboard.vercel.app/ANYCODE` and you are on that board; send the link and others join. Browsers connect to each other directly over WebRTC: the first person to open a code hosts it, and if they leave, someone still on the board takes over with their copy. When the last person leaves, the board is gone. A free public [PeerJS](https://peerjs.com) server only introduces browsers to each other. Pictures are limited to about 3 MB (GIFs about 2.2 MB) because they travel inside the board.
 
-**Self-hosted (Rust server):** boards that are always on and saved to disk, 10 MB uploads, works through strict firewalls. See [Run it](#run-it) and **[docs/DEPLOY.md](docs/DEPLOY.md)**. Set `mode: "server"` in [`site/config.js`](site/config.js) to point the static site at your own server.
+**Self-hosted (Rust server):** 10 MB uploads, works through strict firewalls, and boards are deleted when empty unless you set `SCRAWL_KEEP=1`. See [Run it](#run-it) and **[docs/DEPLOY.md](docs/DEPLOY.md)**. Set `mode: "server"` in [`site/config.js`](site/config.js) to point the static site at your own server.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/TopLuau/scrawl)
 
@@ -81,7 +83,7 @@ docker build -t scrawl . && docker run -p 7878:7878 -v scrawl-data:/data scrawl
 - `web/` is the front end: plain JavaScript drawing to SVG, embedded into the binary at compile time.
 - `web/p2p.js` is the browser-to-browser transport: the host's browser does what the Rust server does (validate, keep state, relay).
 - `site/` is the static site (landing page and boards), generated from `web/` by `tools/build-site.py`.
-- The board code in the URL (`/b/<code>`) is the only access control: anyone with the link can edit. Treat links like unlisted documents.
+- The board code in the URL (`/<code>`) is the only access control: anyone with the link can edit. Treat links like unlisted documents.
 
 More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -91,7 +93,7 @@ Per board: 6000 objects, 60 people. Per message: 512 KB, plus a per-connection r
 
 ## Tested and not tested
 
-Tested on Windows 11 in Chrome (built-in browser pane and Playwright): peer-to-peer boards across three separate browser sessions through the public PeerJS server (join by code, live sync, a 2.3 MB picture, cursors, the host leaving and another person taking over with everything intact), joining, pen strokes, text editing, moving and resizing objects, delete/undo/redo, GIF drop, upload and animation, live sync and presence between two real browser sessions, persistence across a server restart, rejection of bad objects and non-image uploads. Unit tests cover the server's input validation (`cargo test`).
+Tested on Windows 11 in Chrome (built-in browser pane and Playwright): peer-to-peer boards across three separate browser sessions through the public PeerJS server (join by code, live sync, a 2.3 MB picture, cursors, the host leaving and another person taking over with everything intact), joining, pen strokes, text editing, moving and resizing objects, delete/undo/redo, GIF drop, upload and animation, live sync and presence between two real browser sessions, an empty board and its uploaded picture being deleted after the last person leaves (server) and a new visitor finding an empty board (peer-to-peer), rejection of bad objects and non-image uploads. Unit tests cover the server's input validation (`cargo test`).
 
 Not tested: peer-to-peer across different networks and NATs (all test browsers were on one machine), Safari and Firefox, real touch devices (pinch zoom is implemented but untried), several people on separate machines, PNG export of boards with remote images (cross-origin images are skipped if the host blocks fetching), the Render and Fly configs, and the Linux/macOS builds (CI builds them).
 
