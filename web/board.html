@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Scrawl board</title>
+<meta property="og:title" content="Join my Scrawl board">
+<meta property="og:description" content="Draw together on a shared whiteboard.">
+<meta property="og:image" content="/og.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="board">
+<div id="stage"><svg id="svg"><g id="world"><g id="objs"></g><g id="overlay"></g><g id="cursors"></g></g></svg></div>
+
+<div class="float" id="top"><a href="/" title="Home"><img src="/icon.svg" alt="Scrawl"></a><span id="bname"></span><span id="dot" title="connecting"></span></div>
+<div class="float" id="tools"></div>
+<div class="float" id="style">
+  <div><h6>Colour</h6><div class="sw" id="sw"></div></div>
+  <div class="wd-wrap"><h6>Size</h6><div class="wd" id="wd"></div></div>
+</div>
+<div class="float" id="right"><div id="people"></div></div>
+<div class="float" id="zoom"></div>
+<div id="hint">Drop, paste or upload images and GIFs. Hold space to pan. Scroll to zoom.</div>
+<div id="drop">Drop to add to the board</div>
+<div id="toast"></div>
+<input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
+<script src="/board.js"></script>
+</body>
+</html>

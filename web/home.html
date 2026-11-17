@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrawl: a whiteboard you can share in one click</title>
+<meta name="description" content="Draw, write, drop in images and GIFs, and see everyone's cursors live. No accounts, no install. Open source, written in Rust.">
+<meta property="og:title" content="Scrawl">
+<meta property="og:description" content="A whiteboard you can share in one click.">
+<meta property="og:image" content="/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="home">
+  <nav><img src="/icon.svg" alt="">Scrawl</nav>
+  <section class="hero">
+    <h1>A whiteboard you can <em>share in one click.</em></h1>
+    <p>Draw, write, drop in images and GIFs, and watch everyone's cursors move live. No accounts, no install. Send the link and you are drawing together.</p>
+    <div class="row">
+      <button class="btn accent" id="new">Start a board</button>
+      <form class="row" id="joinf"><input class="txt" id="code" placeholder="or paste a board code" autocomplete="off" maxlength="60"><button class="btn ghost">Join</button></form>
+    </div>
+    <div class="recent" id="recent"></div>
+  </section>
+  <section class="feat">
+    <div><b>Draw and write</b><span>Pen, highlighter, shapes, arrows, text and sticky notes on an endless canvas.</span></div>
+    <div><b>Images and GIFs</b><span>Drop, paste or upload files, or paste a link to any image. GIFs keep playing.</span></div>
+    <div><b>Live together</b><span>See each other's cursors and edits as they happen. Boards are saved on the server.</span></div>
+    <div><b>Yours to host</b><span>One Rust binary, a folder of JSON files. Run it anywhere.</span></div>
+  </section>
+</div>
+<script>
+const id=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('');
+document.getElementById('new').onclick=()=>location.href='/b/'+id();
+document.getElementById('joinf').onsubmit=e=>{e.preventDefault();let v=document.getElementById('code').value.trim().split('/').pop().replace(/[^A-Za-z0-9_-]/g,'');if(v)location.href='/b/'+v};
+try{const r=JSON.parse(localStorage.getItem('scrawl.recent')||'[]'),el=document.getElementById('recent');
+if(r.length){el.innerHTML='<div style="color:var(--dim);font-size:13px;margin-bottom:8px">Recent boards</div>';r.forEach(x=>{const a=document.createElement('a');a.href='/b/'+x;a.textContent=x;el.appendChild(a)})}}catch(e){}
+</script>
+</body>
+</html>
