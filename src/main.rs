@@ -23,7 +23,10 @@ use std::{
     },
     time::{Duration, Instant},
 };
+use include_dir::{include_dir, Dir};
 use tokio::sync::broadcast;
+
+static IMG: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/img");
 use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 
 const MAX_OBJECTS: usize = 6000;
@@ -338,6 +341,18 @@ async fn saver(st: St) {
     }
 }
 
+async fn img(Path(name): Path<String>) -> Response {
+    let Some(f) = IMG.get_file(&name) else { return StatusCode::NOT_FOUND.into_response() };
+    let ct = match name.rsplit('.').next() {
+        Some("gif") => "image/gif",
+        Some("png") => "image/png",
+        Some("jpg") => "image/jpeg",
+        Some("webp") => "image/webp",
+        _ => "application/octet-stream",
+    };
+    ([(header::CONTENT_TYPE, ct), (header::CACHE_CONTROL, "public, max-age=3600")], f.contents()).into_response()
+}
+
 async fn stats(State(st): State<St>) -> Json<Value> {
     let rooms = st.rooms.lock().unwrap();
     let users: usize = rooms.values().map(|r| r.users.lock().unwrap().len()).sum();
@@ -365,10 +380,11 @@ async fn main() {
         .route("/", get(|| async { Html(include_str!("../web/home.html")) }))
         .route("/b/:room", get(|| async { Html(include_str!("../web/board.html")) }))
         .route("/style.css", get(|| async { asset(include_str!("../web/style.css"), "text/css; charset=utf-8") }))
+        .route("/landing.css", get(|| async { asset(include_str!("../web/landing.css"), "text/css; charset=utf-8") }))
         .route("/board.js", get(|| async { asset(include_str!("../web/board.js"), "text/javascript; charset=utf-8") }))
         .route("/icon.svg", get(|| async { asset(include_str!("../web/icon.svg"), "image/svg+xml") }))
         .route("/icon-192.png", get(|| async { ([(header::CONTENT_TYPE, "image/png")], include_bytes!("../web/icon-192.png").as_slice()) }))
-        .route("/og.png", get(|| async { ([(header::CONTENT_TYPE, "image/png")], include_bytes!("../web/og.png").as_slice()) }))
+        .route("/img/:name", get(img))
         .route("/ws/:room", get(ws_handler))
         .route("/api/upload", post(upload).layer(DefaultBodyLimit::max(MAX_UPLOAD)))
         .route("/api/stats", get(stats))

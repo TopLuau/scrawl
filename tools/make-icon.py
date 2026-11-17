@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "web")
-PLATE, INK, CORAL, SKY, PAPER = "#17171c", "#ffffff", "#ff6b3d", "#7cc4ff", "#f6f4ee"
+PLATE, INK, CORAL, SKY, PAPER = "#14141c", "#ffffff", "#8b7bff", "#6ec1ff", "#0e0e14"
 
 # Cubic bezier segments (512 box) for the scribble
 SEGS = [((112, 372), (196, 452), (336, 412), (306, 306)),
@@ -75,13 +75,14 @@ def og():
     # dot grid
     for x in range(30, 1200, 30):
         for y in range(30, 630, 30):
-            d.ellipse([x - 1.5, y - 1.5, x + 1.5, y + 1.5], fill="#d8d5cb")
+            d.ellipse([x - 1.5, y - 1.5, x + 1.5, y + 1.5], fill="#23232f")
     ic = render(260)
     im.paste(ic, (90, 185), ic)
-    d.text((390, 200), "Scrawl", font=font(120, True), fill="#17171c")
-    d.text((396, 345), "A whiteboard you can share in one click.", font=font(36), fill="#4a4a55")
-    d.text((396, 400), "Draw, write, drop in images and GIFs, together.", font=font(36), fill="#4a4a55")
-    im.save(os.path.join(OUT, "og.png"))
+    d.text((390, 200), "Scrawl", font=font(120, True), fill="#ffffff")
+    d.text((396, 345), "A whiteboard you can share in one click.", font=font(36), fill="#a4a4b4")
+    d.text((396, 400), "Draw, write, drop in images and GIFs, together.", font=font(36), fill="#a4a4b4")
+    os.makedirs(os.path.join(OUT, "img"), exist_ok=True)
+    im.save(os.path.join(OUT, "img", "og.png"))
 
 
 if __name__ == "__main__":

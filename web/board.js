@@ -221,9 +221,9 @@ function renderSel() {
   const o = sel && objs.get(sel);
   if (!o || tool !== 'select') return;
   const k = cam.k, b = bbox(o), pad = 6 / k;
-  mk('rect', { x: b.x - pad, y: b.y - pad, width: b.w + pad * 2, height: b.h + pad * 2, fill: 'none', stroke: '#ff6b3d', 'stroke-width': 1.5 / k, 'stroke-dasharray': `${5 / k} ${4 / k}`, 'pointer-events': 'none' }, selG);
+  mk('rect', { x: b.x - pad, y: b.y - pad, width: b.w + pad * 2, height: b.h + pad * 2, fill: 'none', stroke: '#7c5cff', 'stroke-width': 1.5 / k, 'stroke-dasharray': `${5 / k} ${4 / k}`, 'pointer-events': 'none' }, selG);
   const handles = o.type === 'shape' ? [['p1', o.x1, o.y1], ['p2', o.x2, o.y2]] : (o.type === 'image' || o.type === 'note') ? [['br', o.x + o.w, o.y + o.h]] : [];
-  for (const [h, x, y] of handles) mk('rect', { x: x - 5 / k, y: y - 5 / k, width: 10 / k, height: 10 / k, rx: 2 / k, fill: '#fff', stroke: '#ff6b3d', 'stroke-width': 1.5 / k, 'data-h': h, style: 'cursor:nwse-resize' }, selG);
+  for (const [h, x, y] of handles) mk('rect', { x: x - 5 / k, y: y - 5 / k, width: 10 / k, height: 10 / k, rx: 2 / k, fill: '#fff', stroke: '#7c5cff', 'stroke-width': 1.5 / k, 'data-h': h, style: 'cursor:nwse-resize' }, selG);
 }
 
 // ---------------------------------------------------------------- text editing
@@ -233,7 +233,7 @@ function openEditor(spec) {
   const ta = document.createElement('textarea');
   ta.id = 'editor'; ta.spellcheck = false; ta.value = spec.s || '';
   Object.assign(ta.style, { left: cam.x + spec.x * k + 'px', top: cam.y + spec.y * k + 'px', fontSize: fs * k + 'px', color: isNote ? '#17171c' : spec.c });
-  if (isNote) Object.assign(ta.style, { width: spec.w * k + 'px', height: spec.h * k + 'px', padding: NOTE_PAD * k + 'px', background: spec.bg, border: '1.5px dashed #ff6b3d' });
+  if (isNote) Object.assign(ta.style, { width: spec.w * k + 'px', height: spec.h * k + 'px', padding: NOTE_PAD * k + 'px', background: spec.bg, border: '1.5px dashed #7c5cff' });
   const fit = () => {
     if (isNote) return;
     const lines = ta.value.split('\n');

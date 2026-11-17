@@ -2,6 +2,8 @@
 
 # Scrawl
 
+![Two people drawing on one board](web/img/tour.gif)
+
 A real-time collaborative whiteboard. One Rust binary, no accounts, no database. Open a board, send the link, draw together.
 
 - **Draw and write**: pen, highlighter, eraser, lines, arrows, rectangles, ellipses, text, sticky notes, on an endless pan/zoom canvas.
@@ -39,14 +41,14 @@ Per board: 6000 objects, 60 people. Per message: 512 KB, plus a per-connection r
 
 ## Tested and not tested
 
-Tested on Windows 11 in Chrome (built-in browser pane): joining, pen strokes, text editing, moving objects, delete/undo/redo, GIF upload by drop and animation, live sync and presence between two clients (the second client was a scripted WebSocket client), persistence across a server restart, rejection of bad objects and non-image uploads.
+Tested on Windows 11 in Chrome (built-in browser pane and Playwright): joining, pen strokes, text editing, moving objects, delete/undo/redo, GIF upload by drop and animation, live sync and presence between two clients (the second client was a scripted WebSocket client), persistence across a server restart, rejection of bad objects and non-image uploads.
 
 Not tested: Safari and Firefox, real touch devices (pinch zoom is implemented but untried), multiple real people on separate machines, PNG export of boards containing remote images (cross-origin images are skipped if the host blocks fetching), Linux/macOS builds (CI builds them).
 
 Known gaps: no multi-select, undo is per person and local, no authentication or board passwords.
 
-## Icon
+## Icon, GIFs and the landing page
 
-`tools/make-icon.py` draws the icon, favicon and social card in code (Python and Pillow).
+`tools/make-icon.py` draws the icon, favicon and social card in code (Python and Pillow). The landing page is `web/home.html`, served at `/`. Its GIFs and screenshots in `web/img/` are recorded from the real app by `tools/capture.py` (Playwright drives two real browser sessions against a local server, so the collaboration in them is real); `tools/make-demo-assets.py` makes the demo picture and GIF that get dropped on the board.
 
 MIT licensed.
