@@ -14,16 +14,16 @@ A real-time collaborative whiteboard. One Rust binary, no accounts, no database.
 
 ```bash
 cargo run --release
-# open http://localhost:8080
+# open http://localhost:7878
 ```
 
 | Environment variable | Default | Meaning |
 |---|---|---|
-| `SCRAWL_ADDR` | `0.0.0.0:8080` | address to listen on |
+| `SCRAWL_ADDR` | `0.0.0.0:7878` | address to listen on |
 | `SCRAWL_DATA` | `data` | folder for boards (`boards/`) and uploads (`files/`) |
 | `SCRAWL_TRUST_PROXY` | unset | set it when behind a reverse proxy so upload rate limits use `X-Forwarded-For` |
 
-Docker: `docker build -t scrawl . && docker run -p 8080:8080 -v scrawl-data:/data scrawl`
+Docker: `docker build -t scrawl . && docker run -p 7878:7878 -v scrawl-data:/data scrawl`
 
 Behind a reverse proxy, forward WebSocket upgrades on `/ws/*`.
 

@@ -351,7 +351,7 @@ fn asset(body: &'static str, ctype: &'static str) -> Response {
 #[tokio::main]
 async fn main() {
     let data = PathBuf::from(std::env::var("SCRAWL_DATA").unwrap_or_else(|_| "data".into()));
-    let addr: SocketAddr = std::env::var("SCRAWL_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".into()).parse().expect("SCRAWL_ADDR must look like 0.0.0.0:8080");
+    let addr: SocketAddr = std::env::var("SCRAWL_ADDR").unwrap_or_else(|_| "0.0.0.0:7878".into()).parse().expect("SCRAWL_ADDR must look like 0.0.0.0:7878");
     let _ = std::fs::create_dir_all(data.join("files"));
     let st: St = Arc::new(App { rooms: Mutex::new(HashMap::new()), data: data.clone(), next_id: AtomicU64::new(1), uploads: Mutex::new(HashMap::new()), trust_proxy: std::env::var("SCRAWL_TRUST_PROXY").is_ok() });
     tokio::spawn(saver(st.clone()));

@@ -7,7 +7,7 @@ RUN cargo build --release
 
 FROM debian:stable-slim
 COPY --from=build /src/target/release/scrawl /usr/local/bin/scrawl
-ENV SCRAWL_DATA=/data SCRAWL_ADDR=0.0.0.0:8080
+ENV SCRAWL_DATA=/data SCRAWL_ADDR=0.0.0.0:7878
 VOLUME /data
-EXPOSE 8080
+EXPOSE 7878
 CMD ["scrawl"]
