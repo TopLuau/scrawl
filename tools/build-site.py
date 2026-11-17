@@ -30,12 +30,24 @@ if not os.path.exists(cfg):  # never overwrite the user's server URL
         '// Where the live Scrawl server runs, e.g. "https://scrawl.onrender.com" (no trailing slash).\n'
         '// Leave it empty and the "Start a board" buttons explain how to host one.\n'
         'window.SCRAWL = { app: "", repo: "TopLuau/scrawl" };\n')
+open(os.path.join(SITE, "404.html"), "w", encoding="utf8").write("""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrawl</title><link rel="icon" href="/icon.svg">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0d0d13;color:#ececf3;font:16px system-ui,sans-serif;text-align:center}a{color:#a99bff}</style>
+<script>
+// Static hosts answer unknown paths with this page. A board link like /ABC123 is forwarded to the board
+// (this keeps links working even where the /CODE rewrite in vercel.json is not applied).
+var m = location.pathname.match(/^\/(?:b\/)?([A-Za-z0-9_-]{3,40})\/?$/);
+if (m) location.replace('/board?c=' + m[1]);
+</script></head>
+<body><div><h1>This page doesn't exist</h1><p><a href="/">Go to Scrawl</a></p></div></body></html>
+""")
 import json
 CFG = {
     "cleanUrls": True,
     "rewrites": [
-        {"source": "/b/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html"},
-        {"source": "/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html"},
+        {"source": "/b/:code", "destination": "/board.html"},
+        {"source": "/:code([^/.]+)", "destination": "/board.html"},
     ],
     "headers": [
         {"source": "/img/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=86400"}]},

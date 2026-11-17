@@ -3,7 +3,12 @@
 const NS = 'http://www.w3.org/2000/svg';
 const $ = s => document.querySelector(s);
 const FONT = '"Segoe UI",system-ui,-apple-system,Roboto,sans-serif';
-const room = decodeURIComponent(location.pathname.split('/').pop());
+// The code is the last path segment (/ABC123). The 404 fallback on static hosts forwards to /board?c=ABC123.
+const room = (() => {
+  const q = new URLSearchParams(location.search).get('c');
+  if (q && /^[A-Za-z0-9_-]{1,40}$/.test(q)) { try { history.replaceState(null, '', '/' + q); } catch {} return q; }
+  return decodeURIComponent(location.pathname.split('/').pop());
+})();
 const COLORS = ['#17171c', '#e03131', '#f08c00', '#2f9e44', '#1971c2', '#7048e8', '#d6336c', '#868e96'];
 const USER_COLORS = ['#e03131', '#f08c00', '#2f9e44', '#1971c2', '#7048e8', '#d6336c'];
 const SIZES = [2.5, 5, 10];

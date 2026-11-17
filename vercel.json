@@ -6,11 +6,11 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/b/:code([A-Za-z0-9_-]{3,40})",
+      "source": "/b/:code",
       "destination": "/board.html"
     },
     {
-      "source": "/:code([A-Za-z0-9_-]{3,40})",
+      "source": "/:code([^/.]+)",
       "destination": "/board.html"
     }
   ],
