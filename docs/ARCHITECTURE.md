@@ -26,9 +26,19 @@ browser (web/board.js, SVG)  <-- WebSocket /ws/<room> -->  src/main.rs (axum)  -
 - Hit testing uses the DOM (`elementFromPoint`) against invisible, wider stroke paths, so thin lines are easy to grab.
 - Text editing uses a temporary `<textarea>` positioned over the object.
 
+## Peer-to-peer mode (`web/p2p.js`)
+
+On static hosts there is no server, so one browser plays the server's part. `board.js` talks to a tiny transport interface (`send`, plus an `onMessage` callback using the same message format as the WebSocket protocol), so the drawing code is identical in both modes.
+
+- **Host election.** Everyone first tries to register the PeerJS id `scrawl-v1-<code>`. The one that succeeds is the host; the others get `unavailable-id` and connect to it as clients.
+- **Host duties.** It runs the same validation as the Rust server (a JavaScript port of `check_fields`), keeps the ordered object list, assigns user ids, relays edits and cursors, applies a rate limit per peer, caps boards at 3000 objects and 30 people, and saves the board to `localStorage`.
+- **Clients** send edits to the host, and re-validate everything they receive.
+- **Host leaves.** Clients notice the closed connection, wait a randomised delay, and race to register the host id again. The winner becomes host and seeds the board from its own copy; the rest rejoin and get a fresh `init`.
+- **Images** are embedded as `data:` URLs (downscaled in a canvas first), which is why peer-to-peer pictures are limited to about 3 MB.
+
 ## Landing page and site
 
-`web/home.html` and `web/landing.css` are served at `/` by the binary. `tools/build-site.py` copies them (and `web/img/`) into `site/` for static hosting, where `site/config.js` tells the page where the board server lives.
+`web/home.html` and `web/landing.css` are served at `/` by the binary. `tools/build-site.py` copies them, the board page and scripts, the vendored PeerJS and `web/img/` into `site/` for static hosting. `site/config.js` chooses `p2p` or `server` mode.
 
 ## Known limits
 

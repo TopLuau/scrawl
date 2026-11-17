@@ -40,7 +40,7 @@ const selG = document.createElementNS(NS, 'g'), prevG = document.createElementNS
 overlay.append(prevG, selG);
 let cam = { x: innerWidth / 2, y: innerHeight / 2, k: 1 };
 const objs = new Map(), els = new Map(), users = new Map(), cursors = new Map();
-let ws = null, me = { id: null, name: 'Guest', color: USER_COLORS[0] }, online = false, firstInit = true, retry = 0;
+let net = null, me = { id: null, name: 'Guest', color: USER_COLORS[0] }, online = false, firstInit = true, retry = 0;
 let tool = 'pen', color = COLORS[0], sizeIdx = 1, sel = null, drag = null, spaceDown = false, editing = null;
 const pointers = new Map();
 let pinch = null;
@@ -169,7 +169,7 @@ function delLocal(id) {
   objs.delete(id); const g = els.get(id); if (g) g.remove(); els.delete(id);
   if (sel === id) select(null);
 }
-function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+function send(m) { if (net) net.send(m); }
 
 function applyItem(it, undo) {
   switch (it.k) {
@@ -492,8 +492,32 @@ function placeCursor(id, c) {
 }
 
 // ---------------------------------------------------------------- images
+const MODE = (window.SCRAWL && window.SCRAWL.mode) || 'server';
+// Static (peer-to-peer) boards have no server to upload to, so pictures travel inside the board as data URLs.
+async function fileToDataUrl(file) {
+  const read = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+  if (file.type === 'image/gif') {
+    if (file.size > 2.2 * 1024 * 1024) { toast('That GIF is over 2.2 MB, too big to share on a peer-to-peer board. Try a smaller GIF or add it by link.'); return null; }
+    return read(file);
+  }
+  const url = await read(file);
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }).catch(() => null);
+  if (!img) { toast("That file couldn't be read as an image."); return null; }
+  let k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+  if (k === 1 && url.length < 3.0e6) return url;
+  const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+  for (let i = 0; i < 6; i++) {
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const out = c.toDataURL(type, 0.85);
+    if (out.length < 3.0e6) return out;
+    k *= 0.75;
+  }
+  toast('That picture is too large to share.'); return null;
+}
 async function uploadFile(file) {
   if (!file.type.startsWith('image/')) { toast('Only images and GIFs can be added.'); return null; }
+  if (MODE === 'p2p') return fileToDataUrl(file);
   if (file.size > 10 * 1024 * 1024) { toast('That file is over the 10 MB limit.'); return null; }
   const r = await fetch('/api/upload', { method: 'POST', body: file, headers: { 'Content-Type': file.type } });
   if (!r.ok) { toast(await r.text() || 'Upload failed'); return null; }
@@ -561,12 +585,26 @@ async function exportPng() {
 }
 
 // ---------------------------------------------------------------- network
+function setStatus(ok, text, role) {
+  online = ok; retry = 0;
+  const d = $('#dot'); d.className = ok ? 'ok' : (role === null ? 'bad' : ''); d.title = text || (ok ? 'connected' : 'connecting');
+  if (ok && role === 'host') toast('You are hosting this board. Share the link; it stays online while someone has it open.');
+}
 function connect() {
+  if (MODE === 'p2p') {
+    net = window.ScrawlP2P.start({ room, me, onMessage: handle, onStatus: setStatus, getObjs: () => [...objs.values()] });
+    return;
+  }
   const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/${encodeURIComponent(room)}?name=${encodeURIComponent(me.name)}&color=${encodeURIComponent(me.color)}`;
-  ws = new WebSocket(url);
-  ws.onopen = () => { online = true; retry = 0; $('#dot').className = 'ok'; $('#dot').title = 'connected'; };
-  ws.onclose = () => { online = false; $('#dot').className = 'bad'; $('#dot').title = 'offline, reconnecting'; retry++; setTimeout(connect, Math.min(8000, 600 * retry)); };
-  ws.onmessage = ev => handle(JSON.parse(ev.data));
+  let ws = null;
+  net = { send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); } };
+  const open = () => {
+    ws = new WebSocket(url);
+    ws.onopen = () => setStatus(true, 'connected');
+    ws.onclose = () => { setStatus(false, 'offline, reconnecting', null); retry++; setTimeout(open, Math.min(8000, 600 * retry)); };
+    ws.onmessage = ev => handle(JSON.parse(ev.data));
+  };
+  open();
 }
 function handle(m) {
   switch (m.t) {
@@ -592,7 +630,7 @@ function handle(m) {
 
 // ---------------------------------------------------------------- boot
 (async function boot() {
-  $('#bname').textContent = room;
+  $('#bname').textContent = room.toUpperCase();
   try { const r = JSON.parse(localStorage.getItem('scrawl.recent') || '[]').filter(x => x !== room); r.unshift(room); localStorage.setItem('scrawl.recent', JSON.stringify(r.slice(0, 8))); } catch {}
   let name = null, col = null;
   try { name = localStorage.getItem('scrawl.name'); col = localStorage.getItem('scrawl.color'); } catch {}
@@ -602,7 +640,9 @@ function handle(m) {
     try { localStorage.setItem('scrawl.name', name.slice(0, 24)); } catch {}
   }
   me.name = name.slice(0, 24); me.color = col;
-  syncStyle(); setTool('pen'); syncUndo(); applyCam(); connect();
+  syncStyle(); setTool('pen'); syncUndo(); applyCam();
+  if (MODE === 'p2p' && !window.Peer) await new Promise(res => { const sc = document.createElement('script'); sc.src = '/peerjs.min.js'; sc.onload = res; sc.onerror = () => { toast('Could not load the connection library.'); res(); }; document.head.appendChild(sc); });
+  connect();
   window.__scrawl = { objs, get cam() { return cam; }, get dbg() { return { tool, spaceDown, drag: drag && drag.k, sel, pointers: pointers.size }; } };
 })();
 addEventListener('resize', applyCam);

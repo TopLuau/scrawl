@@ -453,6 +453,14 @@ async fn saver(st: St) {
     }
 }
 
+async fn room_page(Path(room): Path<String>) -> Response {
+    if valid_room(&room) {
+        Html(include_str!("../web/board.html")).into_response()
+    } else {
+        StatusCode::NOT_FOUND.into_response()
+    }
+}
+
 async fn img(Path(name): Path<String>) -> Response {
     let Some(f) = IMG.get_file(&name) else {
         return StatusCode::NOT_FOUND.into_response();
@@ -530,6 +538,7 @@ async fn main() {
             "/b/:room",
             get(|| async { Html(include_str!("../web/board.html")) }),
         )
+        .route("/:room", get(room_page))
         .route(
             "/style.css",
             get(|| async { asset(include_str!("../web/style.css"), "text/css; charset=utf-8") }),
@@ -542,6 +551,10 @@ async fn main() {
                     "text/css; charset=utf-8",
                 )
             }),
+        )
+        .route(
+            "/p2p.js",
+            get(|| async { asset(include_str!("../web/p2p.js"), "text/javascript; charset=utf-8") }),
         )
         .route(
             "/board.js",
@@ -570,7 +583,7 @@ async fn main() {
             "/config.js",
             get(|| async {
                 asset(
-                    "window.SCRAWL = { app: location.origin, repo: \"topluau/scrawl\" };
+                    "window.SCRAWL = { mode: \"server\", app: location.origin, repo: \"TopLuau/scrawl\" };
 ",
                     "text/javascript; charset=utf-8",
                 )

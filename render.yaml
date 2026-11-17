@@ -1,4 +1,4 @@
-# One-click backend for the live boards: https://render.com/deploy?repo=https://github.com/topluau/scrawl
+# One-click backend for the live boards: https://render.com/deploy?repo=https://github.com/TopLuau/scrawl
 services:
   - type: web
     name: scrawl

@@ -6,10 +6,11 @@
 <title>Scrawl board</title>
 <meta property="og:title" content="Join my Scrawl board">
 <meta property="og:description" content="Draw together on a shared whiteboard.">
-<meta property="og:image" content="/og.png">
+<meta property="og:image" content="/img/og.png">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="/style.css">
+<script src="/config.js"></script>
 </head>
 <body class="board">
 <div id="stage"><svg id="svg"><g id="world"><g id="objs"></g><g id="overlay"></g><g id="cursors"></g></g></svg></div>
@@ -26,6 +27,7 @@
 <div id="drop">Drop to add to the board</div>
 <div id="toast"></div>
 <input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
+<script src="/p2p.js"></script>
 <script src="/board.js"></script>
 </body>
 </html>

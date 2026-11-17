@@ -1,47 +1,51 @@
 # Deploying Scrawl
 
-Scrawl has two parts and they live in different places:
+There are two ways to run Scrawl, and you can use either or both.
 
-| Part | What it is | Where it can run |
+| | Web (peer-to-peer) | Rust server |
 | --- | --- | --- |
-| **Landing page** (`site/`) | static HTML, CSS, GIFs | Vercel, Netlify, GitHub Pages, anywhere |
-| **Board server** (the `scrawl` binary) | WebSockets, saved boards, image uploads | Render, Fly.io, Railway, a VPS, a Raspberry Pi, your laptop |
+| Needs a server | no, a static host is enough (Vercel, Netlify, GitHub Pages) | yes, one small binary |
+| Board addresses | `yoursite.com/CODE` | `yourserver.com/CODE` |
+| Saved boards | live while someone has them open; the host's browser remembers them | JSON files on disk, always on |
+| Images | about 3 MB, GIFs about 2.2 MB (they travel inside the board) | 10 MB uploads |
+| Strict firewalls | can fail (no relay is built in) | works |
+| Cost | free | a small VM or a free tier |
 
-Vercel serves static files and short-lived functions. It cannot hold WebSocket connections or keep files on disk, so the board server cannot run there. (Deploying the whole repository to Vercel is what produced a 500 error: there is nothing for it to run.) The server also serves the landing page itself at `/`, so you can skip Vercel entirely if you want one address.
+## 1. The static site on Vercel (peer-to-peer boards)
 
-## 1. The landing page on Vercel
+The repository has a root `vercel.json` that publishes the `site/` folder, and `site/vercel.json` rewrites `/CODE` to the board page, so importing the repo works as it is.
 
-The repository has a root `vercel.json` that publishes the `site/` folder, so importing the repo works as it is.
+1. Vercel: **Add New, Project**, import the GitHub repo.
+2. Framework preset **Other**. Leave build and install commands empty.
+3. Deploy. `https://your-project.vercel.app/ABC123` is now a board.
 
-1. Vercel → **Add New → Project** → import the GitHub repo.
-2. Framework preset **Other**. Leave build and install commands empty. (Alternatively set **Root Directory** to `site`.)
-3. Deploy. You get a URL like `https://scrawlboard.vercel.app`.
+Or from a terminal: `npx vercel link` then `npx vercel --prod`.
 
-After editing anything in `web/` (landing page, images), regenerate `site/`:
+After editing anything in `web/` (landing page, board, images), regenerate `site/`:
 
 ```bash
 python tools/build-site.py
 ```
 
-## 2. The board server
+How it connects: the first browser to open a code registers `scrawl-v1-<code>` with the public PeerJS matchmaking server and becomes the host. Others connect to that id over WebRTC. You can run your own PeerJS server and set `peer: { host: "...", port: 443, secure: true, path: "/" }` in `site/config.js`; add `config: { iceServers: [...] }` there to supply TURN servers for networks that block direct connections.
 
-### Render (easiest)
+## 2. The Rust server (always-on boards)
+
+### Render
 
 1. Push the repo to GitHub.
-2. Open `https://render.com/deploy?repo=https://github.com/topluau/scrawl` (the *Deploy to Render* button in the README), or New → Blueprint and pick the repo. `render.yaml` sets everything up.
-3. When it is live you get `https://something.onrender.com`. Check `/healthz` answers `ok`.
+2. Open `https://render.com/deploy?repo=https://github.com/TopLuau/scrawl` (the button in the README), or New, Blueprint, pick the repo. `render.yaml` sets it up.
+3. When it is live, `https://something.onrender.com/healthz` answers `ok`.
 
-Free Render instances sleep when idle (the first visit wakes them in about 30 seconds) and **lose saved boards on restart**, because there is no persistent disk on the free plan. For boards that last, use a paid plan with a disk (see the commented block in `render.yaml`).
+Free Render instances sleep when idle (the first visit takes about 30 seconds) and **lose saved boards on restart**. For boards that last, use a paid plan with a disk (see the commented block in `render.yaml`).
 
-### Fly.io (boards persist, small free allowance)
+### Fly.io
 
 ```bash
 fly launch --copy-config --no-deploy
 fly volumes create scrawl_data --size 1
 fly deploy
 ```
-
-`fly.toml` mounts the volume at `/data` and stops the machine when idle.
 
 ### Any Linux box or Raspberry Pi
 
@@ -50,7 +54,7 @@ cargo build --release
 SCRAWL_DATA=/var/lib/scrawl PORT=7878 ./target/release/scrawl
 ```
 
-Or download the matching build from the Releases page. Put it behind a reverse proxy for HTTPS. Caddy example:
+Or download the matching build from the Releases page. Put it behind a reverse proxy for HTTPS. Caddy:
 
 ```
 scrawl.example.com {
@@ -58,18 +62,18 @@ scrawl.example.com {
 }
 ```
 
-Caddy forwards WebSockets automatically. For nginx, add `proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";` on the `/ws/` location. Set `SCRAWL_TRUST_PROXY=1` so rate limits see real client addresses.
+Caddy forwards WebSockets automatically. For nginx add `proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";` on the `/ws/` location. Set `SCRAWL_TRUST_PROXY=1` so rate limits see real client addresses.
 
-## 3. Connect the landing page to the server
+### Pointing the static site at your server
 
-Edit `site/config.js`:
+In `site/config.js`:
 
 ```js
-window.SCRAWL = { app: "https://something.onrender.com", repo: "topluau/scrawl" };
+window.SCRAWL = { mode: "server", app: "https://something.onrender.com", repo: "TopLuau/scrawl" };
 ```
 
-Commit and push; Vercel redeploys. The *Start a board* buttons then open `https://something.onrender.com/b/<code>`. While `app` is empty, the buttons show a short "no board server yet" dialog instead.
+The landing page then sends people to `https://something.onrender.com/CODE`. With `mode: "p2p"` and `app: ""` boards stay on the static site.
 
-## Backups
+## Backups (server mode)
 
-Everything lives in the data folder: `boards/<code>.json` and `files/`. Copy that folder to back it up.
+Everything lives in the data folder: `boards/<code>.json` and `files/`. Copy it to back up.

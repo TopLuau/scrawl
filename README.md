@@ -10,8 +10,8 @@ Draw · write · drop in images and GIFs · live cursors · no accounts</p>
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/topluau/scrawl?color=7c5cff&label=release"></a>
-  <a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/topluau/scrawl/ci.yml?label=CI"></a>
+  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/TopLuau/scrawl?color=7c5cff&label=release"></a>
+  <a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/TopLuau/scrawl/ci.yml?label=CI"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux%20%C2%B7%20Raspberry%20Pi-7c5cff">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
   <img alt="Rust" src="https://img.shields.io/badge/rust-stable-orange">
@@ -67,19 +67,20 @@ docker build -t scrawl . && docker run -p 7878:7878 -v scrawl-data:/data scrawl
 | --- | --- |
 | ![Sketching](web/img/sketch.gif) | ![Images and GIFs](web/img/media.gif) |
 
-## Deploy
+## Two ways to run it
 
-The site at [scrawlboard.vercel.app](https://scrawlboard.vercel.app) is the static landing page (`site/`). **Live boards need the Scrawl server**, because they use WebSockets and a writable disk, which Vercel cannot provide. Run the server on Render, Fly.io, Railway, a VPS or a Raspberry Pi, then put its address in [`site/config.js`](site/config.js) so the landing page's *Start a board* button opens it.
+**On the web (no server):** [scrawlboard.vercel.app](https://scrawlboard.vercel.app) is a static site. Open `scrawlboard.vercel.app/ANYCODE` and you are on that board; send the link and others join. Browsers connect to each other directly over WebRTC: the first person to open a code hosts it, and if they leave, someone still on the board takes over with their copy. A free public [PeerJS](https://peerjs.com) server only introduces browsers to each other. Pictures are limited to about 3 MB (GIFs about 2.2 MB) because they travel inside the board.
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/topluau/scrawl)
+**Self-hosted (Rust server):** boards that are always on and saved to disk, 10 MB uploads, works through strict firewalls. See [Run it](#run-it) and **[docs/DEPLOY.md](docs/DEPLOY.md)**. Set `mode: "server"` in [`site/config.js`](site/config.js) to point the static site at your own server.
 
-Step by step, including Vercel settings and persistence: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/TopLuau/scrawl)
 
 ## How it works
 
 - `src/main.rs` is the whole server ([axum](https://github.com/tokio-rs/axum)): serves the web app, relays edits per board room over WebSockets, saves rooms every two seconds, accepts image uploads.
 - `web/` is the front end: plain JavaScript drawing to SVG, embedded into the binary at compile time.
-- `site/` is the static landing page, generated from `web/` by `tools/build-site.py`.
+- `web/p2p.js` is the browser-to-browser transport: the host's browser does what the Rust server does (validate, keep state, relay).
+- `site/` is the static site (landing page and boards), generated from `web/` by `tools/build-site.py`.
 - The board code in the URL (`/b/<code>`) is the only access control: anyone with the link can edit. Treat links like unlisted documents.
 
 More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -90,11 +91,11 @@ Per board: 6000 objects, 60 people. Per message: 512 KB, plus a per-connection r
 
 ## Tested and not tested
 
-Tested on Windows 11 in Chrome (built-in browser pane and Playwright): joining, pen strokes, text editing, moving and resizing objects, delete/undo/redo, GIF drop, upload and animation, live sync and presence between two real browser sessions, persistence across a server restart, rejection of bad objects and non-image uploads. Unit tests cover the server's input validation (`cargo test`).
+Tested on Windows 11 in Chrome (built-in browser pane and Playwright): peer-to-peer boards across three separate browser sessions through the public PeerJS server (join by code, live sync, a 2.3 MB picture, cursors, the host leaving and another person taking over with everything intact), joining, pen strokes, text editing, moving and resizing objects, delete/undo/redo, GIF drop, upload and animation, live sync and presence between two real browser sessions, persistence across a server restart, rejection of bad objects and non-image uploads. Unit tests cover the server's input validation (`cargo test`).
 
-Not tested: Safari and Firefox, real touch devices (pinch zoom is implemented but untried), several people on separate machines, PNG export of boards with remote images (cross-origin images are skipped if the host blocks fetching), the Render and Fly configs, and the Linux/macOS builds (CI builds them).
+Not tested: peer-to-peer across different networks and NATs (all test browsers were on one machine), Safari and Firefox, real touch devices (pinch zoom is implemented but untried), several people on separate machines, PNG export of boards with remote images (cross-origin images are skipped if the host blocks fetching), the Render and Fly configs, and the Linux/macOS builds (CI builds them).
 
-Known gaps: no multi-select, undo is local to each person, no authentication or board passwords.
+Known gaps: peer-to-peer boards need a direct connection, which some strict networks block (no relay is built in); no multi-select, undo is local to each person, no authentication or board passwords.
 
 ## Development
 
