@@ -1,11 +1,33 @@
 {
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/b/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html" },
-    { "source": "/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html" }
+    {
+      "source": "/b/:code([A-Za-z0-9_-]{3,40})",
+      "destination": "/board.html"
+    },
+    {
+      "source": "/:code([A-Za-z0-9_-]{3,40})",
+      "destination": "/board.html"
+    }
   ],
   "headers": [
-    { "source": "/img/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] },
-    { "source": "/config.js", "headers": [{ "key": "Cache-Control", "value": "public, max-age=60" }] }
+    {
+      "source": "/img/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/config.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60"
+        }
+      ]
+    }
   ]
 }

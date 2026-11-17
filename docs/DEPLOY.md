@@ -13,7 +13,7 @@ There are two ways to run Scrawl, and you can use either or both.
 
 ## 1. The static site on Vercel (peer-to-peer boards)
 
-The repository has a root `vercel.json` that publishes the `site/` folder, and `site/vercel.json` rewrites `/CODE` to the board page, so importing the repo works as it is.
+The repository has a root `vercel.json` that publishes the `site/` folder and rewrites `/CODE` to the board page (Vercel only reads this file from the project root), so importing the repo works as it is.
 
 1. Vercel: **Add New, Project**, import the GitHub repo.
 2. Framework preset **Other**. Leave build and install commands empty.

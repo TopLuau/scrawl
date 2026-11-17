@@ -30,16 +30,20 @@ if not os.path.exists(cfg):  # never overwrite the user's server URL
         '// Where the live Scrawl server runs, e.g. "https://scrawl.onrender.com" (no trailing slash).\n'
         '// Leave it empty and the "Start a board" buttons explain how to host one.\n'
         'window.SCRAWL = { app: "", repo: "TopLuau/scrawl" };\n')
-open(os.path.join(SITE, "vercel.json"), "w", encoding="utf8").write('''{
-  "cleanUrls": true,
-  "rewrites": [
-    { "source": "/b/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html" },
-    { "source": "/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html" }
-  ],
-  "headers": [
-    { "source": "/img/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] },
-    { "source": "/config.js", "headers": [{ "key": "Cache-Control", "value": "public, max-age=60" }] }
-  ]
+import json
+CFG = {
+    "cleanUrls": True,
+    "rewrites": [
+        {"source": "/b/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html"},
+        {"source": "/:code([A-Za-z0-9_-]{3,40})", "destination": "/board.html"},
+    ],
+    "headers": [
+        {"source": "/img/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=86400"}]},
+        {"source": "/config.js", "headers": [{"key": "Cache-Control", "value": "public, max-age=60"}]},
+    ],
 }
-''')
+# Vercel reads vercel.json from the project root, so the rewrites must live there. The copy in site/
+# is for the case where the project's Root Directory is set to "site".
+json.dump({"framework": None, "buildCommand": "", "installCommand": "", "outputDirectory": "site", **CFG}, open(os.path.join(ROOT, "vercel.json"), "w"), indent=2)
+json.dump(CFG, open(os.path.join(SITE, "vercel.json"), "w"), indent=2)
 print("site/ built")
