@@ -18,6 +18,7 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="/landing.css">
+<script src="/config.js"></script>
 </head>
 <body>
 <!-- Icons: Lucide (lucide.dev), ISC license, inlined. -->
@@ -163,14 +164,22 @@ docker run -p 7878:7878 \
 </section>
 </main>
 
-<footer><div class="wrap"><span>Scrawl · MIT licensed · icons by Lucide</span><span>Written in Rust</span></div></footer>
+<dialog id="noapp" style="max-width:440px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);border-radius:14px;padding:24px">
+  <h3 style="margin:0 0 8px">This site has no board server yet</h3>
+  <p style="color:var(--dim);margin:0 0 16px">Boards are live and need the Scrawl server running somewhere. Host your own in a minute, or point this page at one with <code>site/config.js</code>.</p>
+  <form method="dialog" class="cta"><a class="btn primary sm" href="#host" onclick="document.getElementById('noapp').close()">Self-host guide</a><button class="btn sm">Close</button></form>
+</dialog>
+<footer><div class="wrap"><span>Scrawl · MIT licensed · icons by Lucide</span><span><a data-gh href="https://github.com/topluau/scrawl" rel="noopener">GitHub</a> · Written in Rust</span></div></footer>
 
 <script>
 const id=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('');
-const go=e=>{e&&e.preventDefault();location.href='/b/'+id()};
+const CFG=window.SCRAWL||{};
+const APP=(CFG.app||'').replace(/\/$/,'');
+const board=c=>{ if(!APP){ document.getElementById('noapp').showModal(); return } location.href=APP+'/b/'+c };
+const go=e=>{e&&e.preventDefault();board(id())};
 ['new','new2','nav-new'].forEach(i=>document.getElementById(i).onclick=go);
-document.getElementById('joinf').onsubmit=e=>{e.preventDefault();let v=document.getElementById('code').value.trim().split('/').pop().replace(/[^A-Za-z0-9_-]/g,'');if(v)location.href='/b/'+v};
-try{const r=JSON.parse(localStorage.getItem('scrawl.recent')||'[]'),el=document.getElementById('recent');r.forEach(x=>{const a=document.createElement('a');a.href='/b/'+x;a.textContent=x;el.appendChild(a)})}catch(e){}
+document.getElementById('joinf').onsubmit=e=>{e.preventDefault();let v=document.getElementById('code').value.trim().split('/').pop().replace(/[^A-Za-z0-9_-]/g,'');if(v)board(v)};
+try{const r=JSON.parse(localStorage.getItem('scrawl.recent')||'[]'),el=document.getElementById('recent');r.forEach(x=>{const a=document.createElement('a');a.href=(APP||'')+'/b/'+x;a.textContent=x;el.appendChild(a)})}catch(e){}
 </script>
 </body>
 </html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrawl: a whiteboard you can share in one click</title>
+<meta name="description" content="Draw, write, drop in images and GIFs, and see everyone's cursors live. No accounts, no install. Open source, written in Rust.">
+<meta name="theme-color" content="#7c5cff">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://scrawlboard.vercel.app/">
+<meta property="og:site_name" content="Scrawl">
+<meta property="og:title" content="Scrawl: a whiteboard you can share in one click">
+<meta property="og:description" content="Draw, write and drop in images and GIFs together. No accounts, no install.">
+<meta property="og:image" content="https://scrawlboard.vercel.app/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://scrawlboard.vercel.app/img/og.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/landing.css">
+<script src="/config.js"></script>
+</head>
+<body>
+<!-- Icons: Lucide (lucide.dev), ISC license, inlined. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><circle cx="17" cy="7" r="4"/><path d="m3 21 4.5-8L12 21z"/><path d="M14 17h7"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/icon.svg" alt="">Scrawl</a>
+    <nav>
+      <a class="opt" href="#features">Features</a>
+      <a class="opt" href="#tour">See it</a>
+      <a class="opt" href="#host">Self-host</a>
+      <a class="opt" href="#faq">FAQ</a>
+      <a class="btn primary sm" href="#" id="nav-new">Start a board</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <span class="pill">open source · written in Rust</span>
+    <h1>Draw together, <em>in one click.</em></h1>
+    <p class="lead">A whiteboard for sketching, planning and thinking out loud. Drop in images and GIFs, watch everyone's cursors move live, and share it with a link. No accounts, no install.</p>
+    <div class="cta">
+      <button class="btn primary" id="new"><svg class="i"><use href="#i-pen"/></svg>Start a board</button>
+      <form class="join" id="joinf"><input id="code" placeholder="paste a board code" autocomplete="off" maxlength="60" aria-label="Board code"><button class="btn">Join</button></form>
+    </div>
+    <div class="recent" id="recent"></div>
+    <div class="fine">Free. Boards open instantly. Anyone with the link can edit.</div>
+    <div class="frame"><div class="bar"><i></i><i></i><i></i><span>two people, one board</span></div>
+      <img src="/img/tour.gif" alt="Animated: one person writes a title and draws boxes while another adds a sticky note and circles a word, then a GIF is dropped onto the board" width="1000" height="591"></div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <span class="eyebrow">What's in it</span>
+    <h2>Everything for a quick sketch or a long brainstorm</h2>
+    <p class="sec-lead">Infinite canvas, the tools you expect, and nothing in the way.</p>
+    <div class="feat">
+      <div><svg class="i"><use href="#i-pen"/></svg><h3>Pen, highlighter, eraser</h3><p>Smooth strokes in eight colours and three sizes. Erase by dragging over an object.</p></div>
+      <div><svg class="i"><use href="#i-shapes"/></svg><h3>Shapes and arrows</h3><p>Lines, arrows, rectangles and ellipses. Select any of them to move, resize or recolour.</p></div>
+      <div><svg class="i"><use href="#i-type"/></svg><h3>Text and sticky notes</h3><p>Click anywhere and type. Notes wrap their text and resize with a handle.</p></div>
+      <div><svg class="i"><use href="#i-image"/></svg><h3>Images and GIFs</h3><p>Drop, paste, upload or add by link. GIFs keep playing right on the board.</p></div>
+      <div><svg class="i"><use href="#i-users"/></svg><h3>Live together</h3><p>See each other's cursors and edits as they happen, with names and colours.</p></div>
+      <div><svg class="i"><use href="#i-undo"/></svg><h3>Undo and redo</h3><p>Take back your own changes without touching anyone else's work.</p></div>
+      <div><svg class="i"><use href="#i-save"/></svg><h3>Saved automatically</h3><p>Come back to the same link tomorrow and your board is still there.</p></div>
+      <div><svg class="i"><use href="#i-download"/></svg><h3>Export to PNG</h3><p>Save the whole board as a picture with one click.</p></div>
+      <div><svg class="i"><use href="#i-lock"/></svg><h3>No accounts</h3><p>Pick a name and go. Boards are private to whoever has the link.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="tour">
+  <div class="wrap">
+    <span class="eyebrow">See it</span>
+    <h2>Built for the way you actually sketch</h2>
+    <p class="sec-lead">Everything below is a recording of the real app, not a mock-up.</p>
+
+    <div class="show">
+      <div class="txt">
+        <h3>Sketch freely, tidy later</h3>
+        <p>Switch tools with one key and keep drawing. Shapes give you clean outlines while the pen stays loose.</p>
+        <ul><li><kbd>P</kbd> pen, <kbd>H</kbd> highlighter, <kbd>E</kbd> eraser</li><li><kbd>L</kbd> line, <kbd>A</kbd> arrow, <kbd>R</kbd> rectangle, <kbd>O</kbd> ellipse</li><li><kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo, <kbd>Space</kbd> to pan</li></ul>
+      </div>
+      <div class="frame"><img loading="lazy" src="/img/sketch.gif" alt="Animated: drawing a house, a sun and a tree with the pen, highlighter and shape tools, then erasing and undoing" width="960" height="570"></div>
+    </div>
+
+    <div class="show flip">
+      <div class="txt">
+        <h3>Pictures and GIFs, not just lines</h3>
+        <p>Drag a file onto the board, paste from your clipboard, or paste a link. Resize and move it like anything else. Animated GIFs keep moving.</p>
+        <ul><li>PNG, JPEG, GIF and WebP up to 10&nbsp;MB</li><li>Uploads stay on the server you run</li><li>Pin sticky notes right next to them</li></ul>
+      </div>
+      <div class="frame"><img loading="lazy" src="/img/media.gif" alt="Animated: dropping a picture on the board, resizing and moving it, then dropping a spinning GIF and adding a sticky note" width="960" height="570"></div>
+    </div>
+  </div>
+</section>
+
+<section id="built">
+  <div class="wrap">
+    <span class="eyebrow">Under the hood</span>
+    <h2>One small Rust program</h2>
+    <p class="sec-lead">The server, the web app and the sync all ship as a single file. There is no database to set up and nothing to configure to get started.</p>
+    <div class="stats">
+      <div><b>1 file</b><span>the whole app, front end included</span></div>
+      <div><b>JSON</b><span>boards are plain files on disk</span></div>
+      <div><b>WebSocket</b><span>edits and cursors relayed live</span></div>
+      <div><b>MIT</b><span>licensed, free to host and change</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="host">
+  <div class="wrap">
+    <span class="eyebrow">Self-host</span>
+    <h2>Run it yourself in a minute</h2>
+    <p class="sec-lead">Put it on a small server, a spare Raspberry Pi, or your own machine. Your boards and uploads stay in one folder.</p>
+    <div class="two">
+      <div><h3>From source</h3><pre># inside the Scrawl source folder
+cargo run --release
+# open http://localhost:7878</pre></div>
+      <div><h3>With Docker</h3><pre>docker build -t scrawl .
+docker run -p 7878:7878 \
+  -v scrawl-data:/data scrawl</pre></div>
+    </div>
+    <p style="color:var(--dim);font-size:15px">Set <code>SCRAWL_ADDR</code> to choose the port and <code>SCRAWL_DATA</code> for the data folder. Behind a reverse proxy, forward WebSocket upgrades on <code>/ws/*</code>.</p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <span class="eyebrow">Questions</span>
+    <h2>Good to know</h2>
+    <div style="margin-top:28px">
+      <details><summary>Who can see or edit my board?</summary><p>Anyone who has the link. The board code in the address is the only access control, so treat the link like an unlisted document. There are no passwords or accounts yet.</p></details>
+      <details><summary>Do I need to sign up?</summary><p>No. You pick a display name the first time and that is it.</p></details>
+      <details><summary>How do I add a GIF?</summary><p>Drag the file onto the board, paste it, use the image button to upload, or use the globe button to paste a direct link ending in .gif. Search sites like Tenor and Giphy need their own API keys, so they are not built in.</p></details>
+      <details><summary>Does it work on phones and tablets?</summary><p>The interface adapts to small screens and uses touch pointers with pinch zoom. It has been written for touch but not yet tested on real devices, so expect rough edges.</p></details>
+      <details><summary>Where is my data stored?</summary><p>On the server running Scrawl, as one JSON file per board plus the images that were uploaded. Nothing is sent to third parties.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Open a board and send the link.</h2>
+    <button class="btn primary" id="new2"><svg class="i"><use href="#i-pen"/></svg>Start a board</button>
+  </div>
+</section>
+</main>
+
+<dialog id="noapp" style="max-width:440px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);border-radius:14px;padding:24px">
+  <h3 style="margin:0 0 8px">This site has no board server yet</h3>
+  <p style="color:var(--dim);margin:0 0 16px">Boards are live and need the Scrawl server running somewhere. Host your own in a minute, or point this page at one with <code>site/config.js</code>.</p>
+  <form method="dialog" class="cta"><a class="btn primary sm" href="#host" onclick="document.getElementById('noapp').close()">Self-host guide</a><button class="btn sm">Close</button></form>
+</dialog>
+<footer><div class="wrap"><span>Scrawl · MIT licensed · icons by Lucide</span><span><a data-gh href="https://github.com/topluau/scrawl" rel="noopener">GitHub</a> · Written in Rust</span></div></footer>
+
+<script>
+const id=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('');
+const CFG=window.SCRAWL||{};
+const APP=(CFG.app||'').replace(/\/$/,'');
+const board=c=>{ if(!APP){ document.getElementById('noapp').showModal(); return } location.href=APP+'/b/'+c };
+const go=e=>{e&&e.preventDefault();board(id())};
+['new','new2','nav-new'].forEach(i=>document.getElementById(i).onclick=go);
+document.getElementById('joinf').onsubmit=e=>{e.preventDefault();let v=document.getElementById('code').value.trim().split('/').pop().replace(/[^A-Za-z0-9_-]/g,'');if(v)board(v)};
+try{const r=JSON.parse(localStorage.getItem('scrawl.recent')||'[]'),el=document.getElementById('recent');r.forEach(x=>{const a=document.createElement('a');a.href=(APP||'')+'/b/'+x;a.textContent=x;el.appendChild(a)})}catch(e){}
+</script>
+</body>
+</html>

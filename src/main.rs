@@ -12,6 +12,7 @@ use axum::{
     Json, Router,
 };
 use futures_util::{SinkExt, StreamExt};
+use include_dir::{include_dir, Dir};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
@@ -23,7 +24,6 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use include_dir::{include_dir, Dir};
 use tokio::sync::broadcast;
 
 static IMG: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/img");
@@ -59,7 +59,10 @@ struct App {
 type St = Arc<App>;
 
 fn valid_room(s: &str) -> bool {
-    !s.is_empty() && s.len() <= 40 && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    !s.is_empty()
+        && s.len() <= 40
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 fn safe_text(s: &str, max: usize) -> String {
@@ -67,8 +70,16 @@ fn safe_text(s: &str, max: usize) -> String {
 }
 
 fn safe_color(s: &str) -> String {
-    let t: String = s.chars().filter(|c| c.is_ascii_alphanumeric() || "#(),.% ".contains(*c)).take(32).collect();
-    if t.is_empty() { "#1b1b1f".into() } else { t }
+    let t: String = s
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || "#(),.% ".contains(*c))
+        .take(32)
+        .collect();
+    if t.is_empty() {
+        "#1b1b1f".into()
+    } else {
+        t
+    }
 }
 
 impl App {
@@ -80,18 +91,29 @@ impl App {
         if rooms.len() >= MAX_ROOMS {
             return None;
         }
-        let objs: Vec<Value> = std::fs::read_to_string(self.data.join("boards").join(format!("{name}.json")))
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
+        let objs: Vec<Value> =
+            std::fs::read_to_string(self.data.join("boards").join(format!("{name}.json")))
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default();
         let (tx, _) = broadcast::channel(512);
-        let r = Arc::new(Room { objs: Mutex::new(objs), users: Mutex::new(HashMap::new()), tx, dirty: AtomicBool::new(false) });
+        let r = Arc::new(Room {
+            objs: Mutex::new(objs),
+            users: Mutex::new(HashMap::new()),
+            tx,
+            dirty: AtomicBool::new(false),
+        });
         rooms.insert(name.to_string(), r.clone());
         Some(r)
     }
     fn client_ip(&self, addr: SocketAddr, h: &HeaderMap) -> IpAddr {
         if self.trust_proxy {
-            if let Some(ip) = h.get("x-forwarded-for").and_then(|v| v.to_str().ok()).and_then(|v| v.split(',').next()).and_then(|v| v.trim().parse().ok()) {
+            if let Some(ip) = h
+                .get("x-forwarded-for")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.split(',').next())
+                .and_then(|v| v.trim().parse().ok())
+            {
                 return ip;
             }
         }
@@ -103,7 +125,12 @@ impl App {
 fn clean_obj(mut o: Value) -> Option<Value> {
     let m = o.as_object_mut()?;
     let id = m.get("id")?.as_str()?;
-    if id.is_empty() || id.len() > 40 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+    if id.is_empty()
+        || id.len() > 40
+        || !id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
         return None;
     }
     let ty = m.get("type")?.as_str()?.to_string();
@@ -126,7 +153,12 @@ fn check_fields(m: &mut serde_json::Map<String, Value>, ty: &str) -> Option<()> 
             }
             "src" => {
                 let s = v.as_str()?;
-                if s.len() > 2048 || !(s.starts_with("/files/") || s.starts_with("https://") || s.starts_with("http://")) || s.chars().any(|c| c.is_control() || c == '"' || c == '<') {
+                if s.len() > 2048
+                    || !(s.starts_with("/files/")
+                        || s.starts_with("https://")
+                        || s.starts_with("http://"))
+                    || s.chars().any(|c| c.is_control() || c == '"' || c == '<')
+                {
                     return None;
                 }
             }
@@ -163,7 +195,8 @@ struct Bucket {
 impl Bucket {
     fn take(&mut self) -> bool {
         let now = Instant::now();
-        self.tokens = (self.tokens + now.duration_since(self.last).as_secs_f64() * 150.0).min(300.0);
+        self.tokens =
+            (self.tokens + now.duration_since(self.last).as_secs_f64() * 150.0).min(300.0);
         self.last = now;
         if self.tokens >= 1.0 {
             self.tokens -= 1.0;
@@ -174,17 +207,25 @@ impl Bucket {
     }
 }
 
-async fn ws_handler(ws: WebSocketUpgrade, Path(room): Path<String>, Query(q): Query<HashMap<String, String>>, State(st): State<St>) -> Response {
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Path(room): Path<String>,
+    Query(q): Query<HashMap<String, String>>,
+    State(st): State<St>,
+) -> Response {
     if !valid_room(&room) {
         return StatusCode::BAD_REQUEST.into_response();
     }
-    let Some(r) = st.room(&room) else { return StatusCode::SERVICE_UNAVAILABLE.into_response() };
+    let Some(r) = st.room(&room) else {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
     if r.users.lock().unwrap().len() >= MAX_USERS_PER_ROOM {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
     let name = safe_text(q.get("name").map(|s| s.as_str()).unwrap_or("Guest"), 24);
     let color = safe_color(q.get("color").map(|s| s.as_str()).unwrap_or("#e03131"));
-    ws.max_message_size(MAX_MSG).on_upgrade(move |s| client(s, st, r, name, color))
+    ws.max_message_size(MAX_MSG)
+        .on_upgrade(move |s| client(s, st, r, name, color))
 }
 
 async fn client(socket: WebSocket, st: St, room: Arc<Room>, name: String, color: String) {
@@ -193,15 +234,26 @@ async fn client(socket: WebSocket, st: St, room: Arc<Room>, name: String, color:
     let mut rx = room.tx.subscribe();
     let users_json = {
         let mut u = room.users.lock().unwrap();
-        u.insert(me, User { name: name.clone(), color: color.clone() });
-        u.iter().map(|(id, u)| json!({"id": id, "name": u.name, "color": u.color})).collect::<Vec<_>>()
+        u.insert(
+            me,
+            User {
+                name: name.clone(),
+                color: color.clone(),
+            },
+        );
+        u.iter()
+            .map(|(id, u)| json!({"id": id, "name": u.name, "color": u.color}))
+            .collect::<Vec<_>>()
     };
-    let init = json!({"t": "init", "you": me, "objs": *room.objs.lock().unwrap(), "users": users_json});
+    let init =
+        json!({"t": "init", "you": me, "objs": *room.objs.lock().unwrap(), "users": users_json});
     if sink.send(Message::Text(init.to_string())).await.is_err() {
         room.users.lock().unwrap().remove(&me);
         return;
     }
-    let _ = room.tx.send(json!({"t": "join", "u": {"id": me, "name": name, "color": color}}).to_string());
+    let _ = room
+        .tx
+        .send(json!({"t": "join", "u": {"id": me, "name": name, "color": color}}).to_string());
 
     let send_task = tokio::spawn(async move {
         loop {
@@ -217,7 +269,10 @@ async fn client(socket: WebSocket, st: St, room: Arc<Room>, name: String, color:
         }
     });
 
-    let mut bucket = Bucket { tokens: 300.0, last: Instant::now() };
+    let mut bucket = Bucket {
+        tokens: 300.0,
+        last: Instant::now(),
+    };
     while let Some(Ok(msg)) = stream.next().await {
         let Message::Text(txt) = msg else {
             if matches!(msg, Message::Close(_)) {
@@ -228,17 +283,30 @@ async fn client(socket: WebSocket, st: St, room: Arc<Room>, name: String, color:
         if !bucket.take() {
             continue;
         }
-        let Ok(mut v) = serde_json::from_str::<Value>(&txt) else { continue };
-        let t = v.get("t").and_then(|t| t.as_str()).unwrap_or("").to_string();
+        let Ok(mut v) = serde_json::from_str::<Value>(&txt) else {
+            continue;
+        };
+        let t = v
+            .get("t")
+            .and_then(|t| t.as_str())
+            .unwrap_or("")
+            .to_string();
         match t.as_str() {
             "cur" => {
-                let (x, y) = (v.get("x").and_then(|x| x.as_f64()), v.get("y").and_then(|y| y.as_f64()));
+                let (x, y) = (
+                    v.get("x").and_then(|x| x.as_f64()),
+                    v.get("y").and_then(|y| y.as_f64()),
+                );
                 if let (Some(x), Some(y)) = (x, y) {
-                    let _ = room.tx.send(json!({"t": "cur", "from": me, "x": x, "y": y}).to_string());
+                    let _ = room
+                        .tx
+                        .send(json!({"t": "cur", "from": me, "x": x, "y": y}).to_string());
                 }
             }
             "add" => {
-                let Some(o) = v.get_mut("o").map(Value::take).and_then(clean_obj) else { continue };
+                let Some(o) = v.get_mut("o").map(Value::take).and_then(clean_obj) else {
+                    continue;
+                };
                 let mut objs = room.objs.lock().unwrap();
                 let id = o["id"].as_str().unwrap().to_string();
                 if objs.len() >= MAX_OBJECTS || objs.iter().any(|x| x["id"] == id.as_str()) {
@@ -247,16 +315,29 @@ async fn client(socket: WebSocket, st: St, room: Arc<Room>, name: String, color:
                 objs.push(o.clone());
                 drop(objs);
                 room.dirty.store(true, Ordering::Relaxed);
-                let _ = room.tx.send(json!({"t": "add", "from": me, "o": o}).to_string());
+                let _ = room
+                    .tx
+                    .send(json!({"t": "add", "from": me, "o": o}).to_string());
             }
             "upd" => {
-                let Some(id) = v.get("id").and_then(|i| i.as_str()).map(String::from) else { continue };
-                let Some(mut p) = v.get_mut("p").map(Value::take) else { continue };
-                let Some(pm) = p.as_object_mut() else { continue };
+                let Some(id) = v.get("id").and_then(|i| i.as_str()).map(String::from) else {
+                    continue;
+                };
+                let Some(mut p) = v.get_mut("p").map(Value::take) else {
+                    continue;
+                };
+                let Some(pm) = p.as_object_mut() else {
+                    continue;
+                };
                 let mut objs = room.objs.lock().unwrap();
-                let Some(o) = objs.iter_mut().find(|o| o["id"] == id.as_str()) else { continue };
+                let Some(o) = objs.iter_mut().find(|o| o["id"] == id.as_str()) else {
+                    continue;
+                };
                 let ty = o["type"].as_str().unwrap_or("").to_string();
-                if pm.contains_key("id") || pm.contains_key("type") || check_fields(pm, &ty).is_none() {
+                if pm.contains_key("id")
+                    || pm.contains_key("type")
+                    || check_fields(pm, &ty).is_none()
+                {
                     continue;
                 }
                 let om = o.as_object_mut().unwrap();
@@ -265,17 +346,23 @@ async fn client(socket: WebSocket, st: St, room: Arc<Room>, name: String, color:
                 }
                 drop(objs);
                 room.dirty.store(true, Ordering::Relaxed);
-                let _ = room.tx.send(json!({"t": "upd", "from": me, "id": id, "p": p}).to_string());
+                let _ = room
+                    .tx
+                    .send(json!({"t": "upd", "from": me, "id": id, "p": p}).to_string());
             }
             "del" => {
-                let Some(id) = v.get("id").and_then(|i| i.as_str()).map(String::from) else { continue };
+                let Some(id) = v.get("id").and_then(|i| i.as_str()).map(String::from) else {
+                    continue;
+                };
                 let mut objs = room.objs.lock().unwrap();
                 let before = objs.len();
                 objs.retain(|o| o["id"] != id.as_str());
                 if objs.len() != before {
                     drop(objs);
                     room.dirty.store(true, Ordering::Relaxed);
-                    let _ = room.tx.send(json!({"t": "del", "from": me, "id": id}).to_string());
+                    let _ = room
+                        .tx
+                        .send(json!({"t": "del", "from": me, "id": id}).to_string());
                 }
             }
             "clear" => {
@@ -291,7 +378,12 @@ async fn client(socket: WebSocket, st: St, room: Arc<Room>, name: String, color:
     let _ = room.tx.send(json!({"t": "leave", "id": me}).to_string());
 }
 
-async fn upload(State(st): State<St>, ConnectInfo(addr): ConnectInfo<SocketAddr>, headers: HeaderMap, body: Bytes) -> Response {
+async fn upload(
+    State(st): State<St>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
     let ip = st.client_ip(addr, &headers);
     {
         let mut u = st.uploads.lock().unwrap();
@@ -301,20 +393,34 @@ async fn upload(State(st): State<St>, ConnectInfo(addr): ConnectInfo<SocketAddr>
         }
         e.1 += 1;
         if e.1 > 30 {
-            return (StatusCode::TOO_MANY_REQUESTS, "slow down: 30 uploads per minute").into_response();
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                "slow down: 30 uploads per minute",
+            )
+                .into_response();
         }
     }
     let ext = match body.get(..12) {
         Some(b) if b.starts_with(b"\x89PNG\r\n\x1a\n") => "png",
-        Some(b) if b.starts_with(&[0xff, 0xd8, 0xff]) => "jpg",
+        Some([0xff, 0xd8, 0xff, ..]) => "jpg",
         Some(b) if b.starts_with(b"GIF87a") || b.starts_with(b"GIF89a") => "gif",
         Some(b) if b.starts_with(b"RIFF") && &b[8..12] == b"WEBP" => "webp",
-        _ => return (StatusCode::UNSUPPORTED_MEDIA_TYPE, "only PNG, JPEG, GIF and WebP images are accepted").into_response(),
+        _ => {
+            return (
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "only PNG, JPEG, GIF and WebP images are accepted",
+            )
+                .into_response()
+        }
     };
-    let id: String = (0..16).map(|_| format!("{:x}", rand::random::<u8>() & 15)).collect();
+    let id: String = (0..16)
+        .map(|_| format!("{:x}", rand::random::<u8>() & 15))
+        .collect();
     let file = format!("{id}.{ext}");
     let dir = st.data.join("files");
-    if tokio::fs::create_dir_all(&dir).await.is_err() || tokio::fs::write(dir.join(&file), &body).await.is_err() {
+    if tokio::fs::create_dir_all(&dir).await.is_err()
+        || tokio::fs::write(dir.join(&file), &body).await.is_err()
+    {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
     Json(json!({"url": format!("/files/{file}")})).into_response()
@@ -323,7 +429,13 @@ async fn upload(State(st): State<St>, ConnectInfo(addr): ConnectInfo<SocketAddr>
 async fn saver(st: St) {
     loop {
         tokio::time::sleep(Duration::from_secs(2)).await;
-        let rooms: Vec<(String, Arc<Room>)> = st.rooms.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        let rooms: Vec<(String, Arc<Room>)> = st
+            .rooms
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
         for (name, r) in rooms {
             if r.dirty.swap(false, Ordering::Relaxed) {
                 let s = serde_json::to_string(&*r.objs.lock().unwrap()).unwrap_or_default();
@@ -342,7 +454,9 @@ async fn saver(st: St) {
 }
 
 async fn img(Path(name): Path<String>) -> Response {
-    let Some(f) = IMG.get_file(&name) else { return StatusCode::NOT_FOUND.into_response() };
+    let Some(f) = IMG.get_file(&name) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
     let ct = match name.rsplit('.').next() {
         Some("gif") => "image/gif",
         Some("png") => "image/png",
@@ -350,7 +464,14 @@ async fn img(Path(name): Path<String>) -> Response {
         Some("webp") => "image/webp",
         _ => "application/octet-stream",
     };
-    ([(header::CONTENT_TYPE, ct), (header::CACHE_CONTROL, "public, max-age=3600")], f.contents()).into_response()
+    (
+        [
+            (header::CONTENT_TYPE, ct),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        f.contents(),
+    )
+        .into_response()
 }
 
 async fn stats(State(st): State<St>) -> Json<Value> {
@@ -360,38 +481,157 @@ async fn stats(State(st): State<St>) -> Json<Value> {
 }
 
 fn asset(body: &'static str, ctype: &'static str) -> Response {
-    ([(header::CONTENT_TYPE, ctype), (header::CACHE_CONTROL, "no-cache")], body).into_response()
+    (
+        [
+            (header::CONTENT_TYPE, ctype),
+            (header::CACHE_CONTROL, "no-cache"),
+        ],
+        body,
+    )
+        .into_response()
 }
 
 #[tokio::main]
 async fn main() {
     let data = PathBuf::from(std::env::var("SCRAWL_DATA").unwrap_or_else(|_| "data".into()));
-    let addr: SocketAddr = std::env::var("SCRAWL_ADDR").unwrap_or_else(|_| "0.0.0.0:7878".into()).parse().expect("SCRAWL_ADDR must look like 0.0.0.0:7878");
+    // SCRAWL_ADDR wins; hosts like Render/Fly/Railway only give us PORT.
+    let addr: SocketAddr = std::env::var("SCRAWL_ADDR")
+        .or_else(|_| std::env::var("PORT").map(|p| format!("0.0.0.0:{p}")))
+        .unwrap_or_else(|_| "0.0.0.0:7878".into())
+        .parse()
+        .expect("SCRAWL_ADDR must look like 0.0.0.0:7878");
     let _ = std::fs::create_dir_all(data.join("files"));
-    let st: St = Arc::new(App { rooms: Mutex::new(HashMap::new()), data: data.clone(), next_id: AtomicU64::new(1), uploads: Mutex::new(HashMap::new()), trust_proxy: std::env::var("SCRAWL_TRUST_PROXY").is_ok() });
+    let st: St = Arc::new(App {
+        rooms: Mutex::new(HashMap::new()),
+        data: data.clone(),
+        next_id: AtomicU64::new(1),
+        uploads: Mutex::new(HashMap::new()),
+        trust_proxy: std::env::var("SCRAWL_TRUST_PROXY").is_ok(),
+    });
     tokio::spawn(saver(st.clone()));
 
     let files = tower::ServiceBuilder::new()
-        .layer(SetResponseHeaderLayer::overriding(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff")))
-        .layer(SetResponseHeaderLayer::overriding(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static("default-src 'none'; img-src 'self'")))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::X_CONTENT_TYPE_OPTIONS,
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CONTENT_SECURITY_POLICY,
+            HeaderValue::from_static("default-src 'none'; img-src 'self'"),
+        ))
         .service(ServeDir::new(data.join("files")));
 
     let app = Router::new()
-        .route("/", get(|| async { Html(include_str!("../web/home.html")) }))
-        .route("/b/:room", get(|| async { Html(include_str!("../web/board.html")) }))
-        .route("/style.css", get(|| async { asset(include_str!("../web/style.css"), "text/css; charset=utf-8") }))
-        .route("/landing.css", get(|| async { asset(include_str!("../web/landing.css"), "text/css; charset=utf-8") }))
-        .route("/board.js", get(|| async { asset(include_str!("../web/board.js"), "text/javascript; charset=utf-8") }))
-        .route("/icon.svg", get(|| async { asset(include_str!("../web/icon.svg"), "image/svg+xml") }))
-        .route("/icon-192.png", get(|| async { ([(header::CONTENT_TYPE, "image/png")], include_bytes!("../web/icon-192.png").as_slice()) }))
+        .route(
+            "/",
+            get(|| async { Html(include_str!("../web/home.html")) }),
+        )
+        .route(
+            "/b/:room",
+            get(|| async { Html(include_str!("../web/board.html")) }),
+        )
+        .route(
+            "/style.css",
+            get(|| async { asset(include_str!("../web/style.css"), "text/css; charset=utf-8") }),
+        )
+        .route(
+            "/landing.css",
+            get(|| async {
+                asset(
+                    include_str!("../web/landing.css"),
+                    "text/css; charset=utf-8",
+                )
+            }),
+        )
+        .route(
+            "/board.js",
+            get(|| async {
+                asset(
+                    include_str!("../web/board.js"),
+                    "text/javascript; charset=utf-8",
+                )
+            }),
+        )
+        .route(
+            "/icon.svg",
+            get(|| async { asset(include_str!("../web/icon.svg"), "image/svg+xml") }),
+        )
+        .route(
+            "/icon-192.png",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "image/png")],
+                    include_bytes!("../web/icon-192.png").as_slice(),
+                )
+            }),
+        )
         .route("/img/:name", get(img))
+        .route(
+            "/config.js",
+            get(|| async {
+                asset(
+                    "window.SCRAWL = { app: location.origin, repo: \"topluau/scrawl\" };
+",
+                    "text/javascript; charset=utf-8",
+                )
+            }),
+        )
+        .route("/healthz", get(|| async { "ok" }))
         .route("/ws/:room", get(ws_handler))
-        .route("/api/upload", post(upload).layer(DefaultBodyLimit::max(MAX_UPLOAD)))
+        .route(
+            "/api/upload",
+            post(upload).layer(DefaultBodyLimit::max(MAX_UPLOAD)),
+        )
         .route("/api/stats", get(stats))
         .nest_service("/files", files)
         .with_state(st);
 
-    println!("Scrawl listening on http://{addr}  (data in {})", data.display());
-    let listener = tokio::net::TcpListener::bind(addr).await.expect("could not bind");
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+    println!(
+        "Scrawl listening on http://{addr}  (data in {})",
+        data.display()
+    );
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("could not bind");
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_a_stroke() {
+        let o = json!({"id": "abc123", "type": "stroke", "pts": [0, 0, 5.5, 5.5], "c": "#17171c", "w": 4});
+        assert!(clean_obj(o).is_some());
+    }
+
+    #[test]
+    fn rejects_script_urls_and_unknown_types() {
+        assert!(clean_obj(json!({"id": "a1", "type": "image", "x": 0, "y": 0, "w": 9, "h": 9, "src": "javascript:alert(1)"})).is_none());
+        assert!(clean_obj(json!({"id": "a1", "type": "image", "x": 0, "y": 0, "w": 9, "h": 9, "src": "https://x.test/a.gif"})).is_some());
+        assert!(clean_obj(json!({"id": "a1", "type": "weird"})).is_none());
+        assert!(clean_obj(json!({"id": "bad id!", "type": "text", "s": "x"})).is_none());
+    }
+
+    #[test]
+    fn colours_are_cleaned_and_huge_numbers_rejected() {
+        let o = clean_obj(json!({"id": "t1", "type": "text", "x": 1, "y": 2, "s": "hi", "c": "red;} body{display:none"})).unwrap();
+        assert!(!o["c"].as_str().unwrap().contains(';'));
+        assert!(
+            clean_obj(json!({"id": "t2", "type": "text", "x": 1e12, "y": 0, "s": "x"})).is_none()
+        );
+    }
+
+    #[test]
+    fn room_names_are_checked() {
+        assert!(valid_room("abc-123_X"));
+        assert!(!valid_room("../etc"));
+        assert!(!valid_room(""));
+    }
 }

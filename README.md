@@ -1,54 +1,111 @@
-<p align="center"><img src="web/icon-192.png" width="96" alt="Scrawl"></p>
+<p align="center"><img src="web/icon-192.png" width="120" alt="Scrawl"></p>
 
-# Scrawl
+<h1 align="center">Scrawl</h1>
 
-![Two people drawing on one board](web/img/tour.gif)
+<p align="center"><b>A real-time collaborative whiteboard, written in Rust.</b><br>
+Draw · write · drop in images and GIFs · live cursors · no accounts</p>
 
-A real-time collaborative whiteboard. One Rust binary, no accounts, no database. Open a board, send the link, draw together.
+<p align="center">
+  <a href="https://scrawlboard.vercel.app"><b>scrawlboard.vercel.app</b></a>
+</p>
 
-- **Draw and write**: pen, highlighter, eraser, lines, arrows, rectangles, ellipses, text, sticky notes, on an endless pan/zoom canvas.
-- **Images and GIFs**: upload, drag and drop, paste from the clipboard, or add by link. GIFs keep animating on the board.
-- **Live**: everyone's edits and cursors show up instantly (WebSockets). Select, move, resize, undo/redo (your own actions).
-- **Saved**: boards are stored as JSON files on the server and survive restarts.
-- **Export** a board as PNG. **Share** copies the board link.
+<p align="center">
+  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/topluau/scrawl?color=7c5cff&label=release"></a>
+  <a href="../../actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/topluau/scrawl/ci.yml?label=CI"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux%20%C2%B7%20Raspberry%20Pi-7c5cff">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
+  <img alt="Rust" src="https://img.shields.io/badge/rust-stable-orange">
+</p>
+
+<p align="center">
+  <a href="#run-it">Run it</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#deploy">Deploy</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="docs/DEPLOY.md">Deploy guide</a>
+</p>
+
+<p align="center"><img src="web/img/tour.gif" alt="Two people drawing on one board: a title, boxes, a sticky note, and a GIF dropped in" width="860"></p>
+
+---
 
 ## Run it
+
+Scrawl is one binary: the server, the web app and the sync. No database.
 
 ```bash
 cargo run --release
 # open http://localhost:7878
 ```
 
+Or grab a build from the **[Releases page](../../releases/latest)** (Windows, macOS, Linux, Raspberry Pi 64-bit), unpack it and run `scrawl`.
+
 | Environment variable | Default | Meaning |
 |---|---|---|
-| `SCRAWL_ADDR` | `0.0.0.0:7878` | address to listen on |
+| `PORT` | `7878` | port to listen on (set by hosts like Render, Fly and Railway) |
+| `SCRAWL_ADDR` | `0.0.0.0:7878` | full listen address, overrides `PORT` |
 | `SCRAWL_DATA` | `data` | folder for boards (`boards/`) and uploads (`files/`) |
-| `SCRAWL_TRUST_PROXY` | unset | set it when behind a reverse proxy so upload rate limits use `X-Forwarded-For` |
+| `SCRAWL_TRUST_PROXY` | unset | set behind a reverse proxy so rate limits use `X-Forwarded-For` |
 
-Docker: `docker build -t scrawl . && docker run -p 7878:7878 -v scrawl-data:/data scrawl`
+```bash
+docker build -t scrawl . && docker run -p 7878:7878 -v scrawl-data:/data scrawl
+```
 
-Behind a reverse proxy, forward WebSocket upgrades on `/ws/*`.
+## Features
+
+- **Draw and write**: pen, highlighter, eraser, lines, arrows, rectangles, ellipses, text and sticky notes on an endless pan/zoom canvas. Eight colours, three sizes.
+- **Images and GIFs**: upload, drag and drop, paste from the clipboard, or add by link. GIFs keep animating on the board.
+- **Live together**: edits, cursors and who is online show up instantly over WebSockets.
+- **Edit anything**: select, move, resize, recolour, delete. Undo and redo your own actions.
+- **Saved**: boards persist as JSON files and survive restarts.
+- **Export** a board as PNG. **Share** copies the board link.
+- **Keyboard**: `V` select, `P` pen, `H` highlighter, `E` eraser, `L` line, `A` arrow, `R` rectangle, `O` ellipse, `T` text, `N` note, `Space` pan, `Ctrl+Z` undo.
+- **Small**: about 3 MB binary with the whole web app embedded.
+
+| Sketching | Images and GIFs |
+| --- | --- |
+| ![Sketching](web/img/sketch.gif) | ![Images and GIFs](web/img/media.gif) |
+
+## Deploy
+
+The site at [scrawlboard.vercel.app](https://scrawlboard.vercel.app) is the static landing page (`site/`). **Live boards need the Scrawl server**, because they use WebSockets and a writable disk, which Vercel cannot provide. Run the server on Render, Fly.io, Railway, a VPS or a Raspberry Pi, then put its address in [`site/config.js`](site/config.js) so the landing page's *Start a board* button opens it.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/topluau/scrawl)
+
+Step by step, including Vercel settings and persistence: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ## How it works
 
-- `src/main.rs` is the whole server (axum): serves the web app, relays edits per board room over WebSockets, persists rooms every two seconds, accepts image uploads.
-- `web/` is the front end, plain JS rendering to SVG. It is embedded into the binary, so deployment is a single file.
-- Board code in the URL (`/b/<code>`) is the only access control: anyone with the link can edit. Treat links like unlisted documents.
+- `src/main.rs` is the whole server ([axum](https://github.com/tokio-rs/axum)): serves the web app, relays edits per board room over WebSockets, saves rooms every two seconds, accepts image uploads.
+- `web/` is the front end: plain JavaScript drawing to SVG, embedded into the binary at compile time.
+- `site/` is the static landing page, generated from `web/` by `tools/build-site.py`.
+- The board code in the URL (`/b/<code>`) is the only access control: anyone with the link can edit. Treat links like unlisted documents.
+
+More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Limits and abuse protection
 
-Per board: 6000 objects, 60 people. Per message: 512 KB, plus a per-connection rate limit. Uploads: 10 MB, PNG/JPEG/GIF/WebP only (checked by file signature), 30 per minute per IP, served with `nosniff` and a locked-down CSP. Every object field is validated server side (types, colours, image URLs must be `http(s)` or an uploaded file).
+Per board: 6000 objects, 60 people. Per message: 512 KB, plus a per-connection rate limit. Uploads: 10 MB, PNG/JPEG/GIF/WebP only (checked by file signature), 30 per minute per IP, served with `nosniff` and a locked-down CSP. Every object field is validated on the server (types, colours, numbers; image URLs must be `http(s)` or an uploaded file).
 
 ## Tested and not tested
 
-Tested on Windows 11 in Chrome (built-in browser pane and Playwright): joining, pen strokes, text editing, moving objects, delete/undo/redo, GIF upload by drop and animation, live sync and presence between two clients (the second client was a scripted WebSocket client), persistence across a server restart, rejection of bad objects and non-image uploads.
+Tested on Windows 11 in Chrome (built-in browser pane and Playwright): joining, pen strokes, text editing, moving and resizing objects, delete/undo/redo, GIF drop, upload and animation, live sync and presence between two real browser sessions, persistence across a server restart, rejection of bad objects and non-image uploads. Unit tests cover the server's input validation (`cargo test`).
 
-Not tested: Safari and Firefox, real touch devices (pinch zoom is implemented but untried), multiple real people on separate machines, PNG export of boards containing remote images (cross-origin images are skipped if the host blocks fetching), Linux/macOS builds (CI builds them).
+Not tested: Safari and Firefox, real touch devices (pinch zoom is implemented but untried), several people on separate machines, PNG export of boards with remote images (cross-origin images are skipped if the host blocks fetching), the Render and Fly configs, and the Linux/macOS builds (CI builds them).
 
-Known gaps: no multi-select, undo is per person and local, no authentication or board passwords.
+Known gaps: no multi-select, undo is local to each person, no authentication or board passwords.
 
-## Icon, GIFs and the landing page
+## Development
 
-`tools/make-icon.py` draws the icon, favicon and social card in code (Python and Pillow). The landing page is `web/home.html`, served at `/`. Its GIFs and screenshots in `web/img/` are recorded from the real app by `tools/capture.py` (Playwright drives two real browser sessions against a local server, so the collaboration in them is real); `tools/make-demo-assets.py` makes the demo picture and GIF that get dropped on the board.
+```bash
+cargo test                      # server validation tests
+cargo clippy --all-targets
+python tools/make-icon.py       # icon, favicon, social card (needs Pillow)
+python tools/build-site.py      # regenerate site/ after editing web/
+python tools/make-demo-assets.py && python tools/capture.py http://127.0.0.1:7879   # re-record the GIFs (needs Playwright + Chrome)
+```
 
-MIT licensed.
+## License
+
+MIT. Icons in the landing page are from [Lucide](https://lucide.dev) (ISC).

@@ -1,0 +1,24 @@
+# fly launch --copy-config   (then: fly volumes create scrawl_data --size 1 && fly deploy)
+app = "scrawl"
+primary_region = "iad"
+
+[build]
+
+[env]
+  SCRAWL_DATA = "/data"
+  SCRAWL_TRUST_PROXY = "1"
+
+[http_service]
+  internal_port = 7878
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "scrawl_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

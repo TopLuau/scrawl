@@ -1,0 +1,15 @@
+# One-click backend for the live boards: https://render.com/deploy?repo=https://github.com/topluau/scrawl
+services:
+  - type: web
+    name: scrawl
+    runtime: docker
+    plan: free            # free instances sleep when idle and lose saved boards on restart
+    healthCheckPath: /healthz
+    envVars:
+      - key: SCRAWL_TRUST_PROXY
+        value: "1"
+    # For boards that survive restarts, use a paid plan and uncomment:
+    # disk:
+    #   name: scrawl-data
+    #   mountPath: /data
+    #   sizeGB: 1
